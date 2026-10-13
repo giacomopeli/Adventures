@@ -1,0 +1,982 @@
+<title>La casa dalle finestre che ridono</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Crimson+Pro:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+/* Layout: una pagina di nebbia padana a tutta altezza — intestazione dattiloscritta, racconto che scorre, riga di comando, tasti rapidi. Tema unico, scuro, voluto. */
+:root{
+  --bg:#0d100f;
+  --paper:#141816;
+  --fg:#c8cdc4;
+  --hi:#ece9df;
+  --dim:#7f877f;
+  --faint:#2c332f;
+  --blood:#b3332b;
+  --veil:rgba(13,16,15,.78);
+  --torch:#e9c46a;
+  --type:"Special Elite", "Courier New", ui-monospace, monospace;
+  --body:"Crimson Pro", Georgia, "Times New Roman", serif;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:18px;line-height:1.5}
+.app{height:100%;display:flex;flex-direction:column;max-width:820px;margin:0 auto;padding-inline:16px;padding-block:12px;box-sizing:border-box;gap:10px}
+header{position:relative;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 16px;padding-bottom:8px;border-bottom:1px solid var(--faint)}
+.hright{display:flex;align-items:center;gap:14px;flex:1 1 auto;justify-content:flex-end}
+.hright .status{flex-wrap:wrap;min-width:0;row-gap:2px}
+@media (max-width:520px){.hright{width:100%;justify-content:space-between}.hright .status{gap:2px 10px}}
+.menu{position:relative}
+.menu summary{list-style:none;cursor:pointer;display:grid;place-items:center;width:36px;height:36px;box-sizing:border-box;color:var(--fg);border:1px solid var(--faint);border-radius:3px;user-select:none}
+.menu summary:hover{color:var(--hi);border-color:var(--dim)}
+.menu summary::-webkit-details-marker{display:none}
+.menu[open] summary{border-color:var(--dim);color:var(--hi)}
+.menu summary:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.menu .panel{position:absolute;right:0;top:calc(100% + 6px);z-index:10;width:min(300px,calc(100vw - 32px));background:var(--paper);border:1px solid var(--dim);border-radius:3px;padding:6px;box-shadow:0 12px 30px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:2px}
+.menu .panel button{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:baseline;text-align:left;background:transparent;border:0;border-radius:2px;padding:8px 10px;color:var(--fg);font-family:var(--body);font-size:1rem;cursor:pointer}
+.menu .panel button:hover,.menu .panel button:focus-visible{background:var(--faint);color:var(--hi);outline:0}
+.menu .panel code{font-family:var(--type);font-size:.78rem;color:var(--blood)}
+.menu .panel small{grid-column:1/-1;font-size:.82rem;color:var(--dim);line-height:1.3}
+.compass{position:relative;flex:none;height:clamp(170px,34vh,290px);border:1px solid var(--faint);border-radius:3px;background:radial-gradient(ellipse at 50% 55%, var(--paper) 0%, var(--bg) 75%);overflow:hidden;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+.compass.drag{cursor:grabbing}
+.compass canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.cl{position:absolute;left:0;top:0;max-width:150px;box-sizing:border-box;font-family:var(--body);font-size:.9rem;line-height:1.15;text-align:left;color:var(--fg);background:var(--veil);border:1px solid var(--faint);border-radius:3px;padding:4px 7px;cursor:pointer;will-change:transform}
+.cl b{display:block;font-family:var(--type);font-weight:400;font-size:.7rem;letter-spacing:.09em;text-transform:uppercase;color:var(--blood)}
+.cl:hover,.cl:focus-visible{border-color:var(--dim);color:var(--hi);outline:0}
+.cl.dark{color:var(--dim);font-style:italic}
+@media (max-width:520px){.compass{height:clamp(170px,32vh,262px)}.cl{max-width:118px;font-size:.82rem;padding:3px 6px}}
+.ov{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.72);display:none;place-items:center;padding:16px}
+.ov.open{display:grid}
+.pane{display:none;flex-direction:column;gap:12px}
+.pane.on{display:flex}
+.sheet .actions{display:flex;flex-wrap:wrap;gap:8px}
+.sheet .btn2{font-family:var(--type);font-size:.85rem;background:transparent;color:var(--fg);border:1px solid var(--dim);border-radius:3px;padding:9px 14px;cursor:pointer}
+.sheet .btn2:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.sheet{position:relative;box-sizing:border-box;width:min(420px,100%);max-height:100%;overflow:auto;background:var(--paper);border:1px solid var(--dim);border-radius:4px;padding:20px;display:flex;flex-direction:column;gap:12px}
+.sheet h2{font-family:var(--type);font-weight:400;font-size:1.25rem;color:var(--hi);margin:0;padding-right:32px}
+.sheet p{margin:0;font-size:1rem;color:var(--fg)}
+.sheet .x{position:absolute;z-index:2;top:8px;right:8px;width:40px;height:40px;background:transparent;border:1px solid var(--faint);border-radius:3px;color:var(--fg);font-size:1.2rem;line-height:1;cursor:pointer}
+.sheet .code{font-family:var(--type);font-size:1.25rem;letter-spacing:.06em;color:var(--hi);background:var(--bg);border:1px solid var(--faint);border-radius:3px;padding:12px;text-align:center;word-break:break-all;user-select:all;-webkit-user-select:all}
+.sheet .btn{font-family:var(--type);font-size:.85rem;background:var(--blood);color:var(--hi);border:0;border-radius:3px;padding:9px 14px;cursor:pointer;align-self:flex-start}
+.sheet .btn:focus-visible,.sheet .x:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.sheet .qr{background:#fff;padding:10px;border-radius:3px;width:min(220px,100%);box-sizing:border-box;align-self:center}
+.sheet .qr svg{display:block;width:100%;height:auto}
+.sheet .hint{font-size:.88rem;color:var(--dim)}
+.sheet input{font-family:var(--type);font-size:16px;letter-spacing:.05em;text-transform:uppercase;background:var(--bg);color:var(--hi);border:1px solid var(--faint);border-radius:3px;padding:10px;width:100%;box-sizing:border-box}
+.sheet input:focus{outline:0;border-color:var(--dim)}
+.sheet .err{color:var(--blood);font-size:.92rem;min-height:1.2em}
+.menu .note{font-family:var(--type);font-size:.72rem;color:var(--dim);padding:8px 10px 4px;border-top:1px solid var(--faint);margin-top:4px;line-height:1.4}
+h1{font-family:var(--type);font-weight:400;font-size:1.6rem;line-height:1.1;margin:0;color:var(--hi);letter-spacing:.01em;text-wrap:balance}
+h1 span{color:var(--blood)}
+.status{display:flex;gap:14px;font-family:var(--type);font-size:.78rem;color:var(--dim);font-variant-numeric:tabular-nums}
+.status b{color:var(--fg);font-weight:400}
+.screen{flex:1;min-height:0;overflow-y:auto;background:var(--paper);border:1px solid var(--faint);border-radius:3px;padding:18px 20px;box-shadow:inset 0 0 80px rgba(0,0,0,.6)}
+.log{max-width:64ch;display:flex;flex-direction:column;gap:11px}
+.log p{margin:0}
+.log .room{font-family:var(--type);font-size:1.15rem;color:var(--hi);margin-top:8px;letter-spacing:.03em;text-transform:uppercase}
+.log .cmd{font-family:var(--type);font-size:.92rem;color:var(--dim)}
+.log .cmd::before{content:"> "}
+.log .meta{font-family:var(--type);font-size:.85rem;color:var(--dim)}
+.log .amb{font-style:italic;color:var(--dim)}
+.log .bad{color:var(--blood)}
+.log .end{font-family:var(--type);font-size:1.15rem;color:var(--blood);border-top:1px dashed var(--faint);padding-top:10px;letter-spacing:.05em}
+.log .win{color:var(--hi)}
+.log em{color:var(--hi)}
+.cmdbar{display:flex;align-items:center;gap:8px;border:1px solid var(--faint);border-radius:3px;padding:6px 10px;background:var(--paper)}
+.cmdbar:focus-within{border-color:var(--dim)}
+.cmdbar label{font-family:var(--type);font-size:1.2rem;color:var(--blood)}
+#cmd{flex:1;min-width:0;background:transparent;border:0;outline:0;color:var(--hi);font-family:var(--type);font-size:16px;caret-color:var(--blood);padding:6px 0}
+#cmd::placeholder{color:#4a524c}
+#send,.keys button{font-family:var(--type);font-size:.8rem;border-radius:3px;cursor:pointer;padding:7px 11px}
+#send{background:var(--blood);color:var(--hi);border:0}
+.keys{display:flex;flex-wrap:wrap;gap:6px}
+.keys button{background:transparent;color:var(--fg);border:1px solid var(--faint)}
+.keys button:hover{border-color:var(--dim);color:var(--hi)}
+.keys button:focus-visible,#send:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+@media (max-width:520px){h1{font-size:clamp(1rem,5vw,1.3rem);letter-spacing:0}body{font-size:17px}.screen{padding:12px 14px}}
+@media (prefers-reduced-motion:no-preference){.log p.new{animation:in .4s ease-out}@keyframes in{from{opacity:0;filter:blur(2px)}to{opacity:1;filter:none}}}
+</style>
+
+<div class="app">
+  <header>
+    <h1>La casa dalle finestre che <span>ridono</span></h1>
+    <div class="hright">
+      <div class="status" aria-live="polite">
+        <span id="st-luogo"><b>—</b></span>
+        <span>Punti <b id="st-punti">0</b>/100</span>
+        <span>Mosse <b id="st-mosse">0</b></span>
+      </div>
+      <details class="menu" id="menu">
+        <summary aria-label="Menu partita" title="Menu partita"><svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg></summary>
+        <div class="panel">
+          <button type="button" data-c="salva"><span>Salva partita</span><code>salva</code><small>Memorizza il punto in cui sei. Sovrascrive il salvataggio precedente.</small></button>
+          <button type="button" data-c="carica"><span>Carica partita</span><code>carica</code><small>Torna all'ultimo salvataggio. Funziona anche dopo una morte.</small></button>
+          <button type="button" data-a="export"><span>Esporta partita</span><code>esporta</code><small>Crea un codice corto e un QR per continuare su un altro dispositivo.</small></button>
+          <button type="button" data-a="import"><span>Importa partita</span><code>importa</code><small>Riprendi una partita da un codice di salvataggio.</small></button>
+          <button type="button" data-c="ricomincia avventura"><span>Ricomincia avventura</span><code>ricomincia avventura</code><small>Riparte da capo. Il salvataggio non viene cancellato.</small></button>
+          <button type="button" data-c="punti"><span>Punteggio</span><code>punti</code><small>Mostra punti e mosse fatte finora.</small></button>
+          <button type="button" data-c="aiuto"><span>Elenco comandi</span><code>aiuto</code><small>Tutti i verbi che il gioco capisce.</small></button>
+          <div class="note">Salva e Carica usano un solo slot in questo browser. Per cambiare dispositivo usa Esporta e Importa. I comandi si possono anche scrivere a mano.</div>
+        </div>
+      </details>
+    </div>
+  </header>
+
+  <div class="screen" id="screen"><div class="log" id="log" aria-live="polite"></div></div>
+
+  <div class="compass" id="compass" role="group" aria-label="Uscite">
+    <canvas id="cv" aria-hidden="true"></canvas>
+    <div id="labels"></div>
+  </div>
+
+  <div class="cmdbar" id="f">
+    <label for="cmd">&gt;</label>
+    <input id="cmd" type="text" placeholder="scrivi un comando, es. guarda, est, leggi busta" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="send">
+    <button id="send" type="button">Invia</button>
+  </div>
+
+  <div class="keys" id="keys">
+    <button type="button" data-c="guarda">Guarda</button>
+    <button type="button" data-c="inventario">Inventario</button>
+    <button type="button" data-c="aiuto">Aiuto</button>
+  </div>
+</div>
+
+<div class="ov" id="ov">
+  <div class="sheet" role="dialog" aria-modal="true" aria-label="Codice di salvataggio">
+    <button type="button" class="x" data-close aria-label="Chiudi">×</button>
+    <section class="pane" id="ov-export">
+      <h2>Esporta partita</h2>
+      <p>Inquadra il QR con la fotocamera dell'altro dispositivo, oppure scrivi questo codice in <em>☰ → Importa partita</em>.</p>
+      <div class="code" id="ex-code"></div>
+      <div class="qr" id="ex-qr" style="display:none"></div>
+      <p class="hint" id="ex-hint"></p>
+      <div class="actions">
+        <button type="button" class="btn" id="ex-copy">Copia codice</button>
+        <button type="button" class="btn2" data-close>Chiudi</button>
+      </div>
+    </section>
+    <section class="pane" id="ov-import">
+      <h2>Importa partita</h2>
+      <p>Scrivi o incolla il codice di salvataggio. Maiuscole, minuscole e trattini non contano.</p>
+      <input id="im-code" type="text" placeholder="FCR1-XXXX-XXXX-XXXX-XXXX" autocapitalize="characters" autocomplete="off" spellcheck="false">
+      <p class="err" id="im-err" aria-live="polite"></p>
+      <div class="actions">
+        <button type="button" class="btn" id="im-go">Importa</button>
+        <button type="button" class="btn2" data-close>Annulla</button>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+/* qrcode-generator 1.4.4 — Copyright (c) 2009 Kazuhiko Arase, licenza MIT
+   https://github.com/kazuhikoarase/qrcode-generator
+   "QR Code" è un marchio registrato di DENSO WAVE INCORPORATED. Incorporata per funzionare anche offline. */
+var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],f={},c=function(t,r){o=function(t){for(var r=new Array(t),e=0;e<t;e+=1){r[e]=new Array(t);for(var n=0;n<t;n+=1)r[e][n]=null}return r}(i=4*e+17),l(0,0),l(i-7,0),l(0,i-7),s(),h(),d(t,r),e>=7&&v(t),null==a&&(a=p(e,n,u)),w(a,r)},l=function(t,r){for(var e=-1;e<=7;e+=1)if(!(t+e<=-1||i<=t+e))for(var n=-1;n<=7;n+=1)r+n<=-1||i<=r+n||(o[t+e][r+n]=0<=e&&e<=6&&(0==n||6==n)||0<=n&&n<=6&&(0==e||6==e)||2<=e&&e<=4&&2<=n&&n<=4)},h=function(){for(var t=8;t<i-8;t+=1)null==o[t][6]&&(o[t][6]=t%2==0);for(var r=8;r<i-8;r+=1)null==o[6][r]&&(o[6][r]=r%2==0)},s=function(){for(var t=B.getPatternPosition(e),r=0;r<t.length;r+=1)for(var n=0;n<t.length;n+=1){var i=t[r],a=t[n];if(null==o[i][a])for(var u=-2;u<=2;u+=1)for(var f=-2;f<=2;f+=1)o[i+u][a+f]=-2==u||2==u||-2==f||2==f||0==u&&0==f}},v=function(t){for(var r=B.getBCHTypeNumber(e),n=0;n<18;n+=1){var a=!t&&1==(r>>n&1);o[Math.floor(n/3)][n%3+i-8-3]=a}for(n=0;n<18;n+=1){a=!t&&1==(r>>n&1);o[n%3+i-8-3][Math.floor(n/3)]=a}},d=function(t,r){for(var e=n<<3|r,a=B.getBCHTypeInfo(e),u=0;u<15;u+=1){var f=!t&&1==(a>>u&1);u<6?o[u][8]=f:u<8?o[u+1][8]=f:o[i-15+u][8]=f}for(u=0;u<15;u+=1){f=!t&&1==(a>>u&1);u<8?o[8][i-u-1]=f:u<9?o[8][15-u-1+1]=f:o[8][15-u-1]=f}o[i-8][8]=!t},w=function(t,r){for(var e=-1,n=i-1,a=7,u=0,f=B.getMaskFunction(r),c=i-1;c>0;c-=2)for(6==c&&(c-=1);;){for(var g=0;g<2;g+=1)if(null==o[n][c-g]){var l=!1;u<t.length&&(l=1==(t[u]>>>a&1)),f(n,c-g)&&(l=!l),o[n][c-g]=l,-1==(a-=1)&&(u+=1,a=7)}if((n+=e)<0||i<=n){n-=e,e=-e;break}}},p=function(t,r,e){for(var n=A.getRSBlocks(t,r),o=b(),i=0;i<e.length;i+=1){var a=e[i];o.put(a.getMode(),4),o.put(a.getLength(),B.getLengthInBits(a.getMode(),t)),a.write(o)}var u=0;for(i=0;i<n.length;i+=1)u+=n[i].dataCount;if(o.getLengthInBits()>8*u)throw"code length overflow. ("+o.getLengthInBits()+">"+8*u+")";for(o.getLengthInBits()+4<=8*u&&o.put(0,4);o.getLengthInBits()%8!=0;)o.putBit(!1);for(;!(o.getLengthInBits()>=8*u||(o.put(236,8),o.getLengthInBits()>=8*u));)o.put(17,8);return function(t,r){for(var e=0,n=0,o=0,i=new Array(r.length),a=new Array(r.length),u=0;u<r.length;u+=1){var f=r[u].dataCount,c=r[u].totalCount-f;n=Math.max(n,f),o=Math.max(o,c),i[u]=new Array(f);for(var g=0;g<i[u].length;g+=1)i[u][g]=255&t.getBuffer()[g+e];e+=f;var l=B.getErrorCorrectPolynomial(c),h=k(i[u],l.getLength()-1).mod(l);for(a[u]=new Array(l.getLength()-1),g=0;g<a[u].length;g+=1){var s=g+h.getLength()-a[u].length;a[u][g]=s>=0?h.getAt(s):0}}var v=0;for(g=0;g<r.length;g+=1)v+=r[g].totalCount;var d=new Array(v),w=0;for(g=0;g<n;g+=1)for(u=0;u<r.length;u+=1)g<i[u].length&&(d[w]=i[u][g],w+=1);for(g=0;g<o;g+=1)for(u=0;u<r.length;u+=1)g<a[u].length&&(d[w]=a[u][g],w+=1);return d}(o,n)};f.addData=function(t,r){var e=null;switch(r=r||"Byte"){case"Numeric":e=M(t);break;case"Alphanumeric":e=x(t);break;case"Byte":e=m(t);break;case"Kanji":e=L(t);break;default:throw"mode:"+r}u.push(e),a=null},f.isDark=function(t,r){if(t<0||i<=t||r<0||i<=r)throw t+","+r;return o[t][r]},f.getModuleCount=function(){return i},f.make=function(){if(e<1){for(var t=1;t<40;t++){for(var r=A.getRSBlocks(t,n),o=b(),i=0;i<u.length;i++){var a=u[i];o.put(a.getMode(),4),o.put(a.getLength(),B.getLengthInBits(a.getMode(),t)),a.write(o)}var g=0;for(i=0;i<r.length;i++)g+=r[i].dataCount;if(o.getLengthInBits()<=8*g)break}e=t}c(!1,function(){for(var t=0,r=0,e=0;e<8;e+=1){c(!0,e);var n=B.getLostPoint(f);(0==e||t>n)&&(t=n,r=e)}return r}())},f.createTableTag=function(t,r){t=t||2;var e="";e+='<table style="',e+=" border-width: 0px; border-style: none;",e+=" border-collapse: collapse;",e+=" padding: 0px; margin: "+(r=void 0===r?4*t:r)+"px;",e+='">',e+="<tbody>";for(var n=0;n<f.getModuleCount();n+=1){e+="<tr>";for(var o=0;o<f.getModuleCount();o+=1)e+='<td style="',e+=" border-width: 0px; border-style: none;",e+=" border-collapse: collapse;",e+=" padding: 0px; margin: 0px;",e+=" width: "+t+"px;",e+=" height: "+t+"px;",e+=" background-color: ",e+=f.isDark(n,o)?"#000000":"#ffffff",e+=";",e+='"/>';e+="</tr>"}return e+="</tbody>",e+="</table>"},f.createSvgTag=function(t,r,e,n){var o={};"object"==typeof arguments[0]&&(t=(o=arguments[0]).cellSize,r=o.margin,e=o.alt,n=o.title),t=t||2,r=void 0===r?4*t:r,(e="string"==typeof e?{text:e}:e||{}).text=e.text||null,e.id=e.text?e.id||"qrcode-description":null,(n="string"==typeof n?{text:n}:n||{}).text=n.text||null,n.id=n.text?n.id||"qrcode-title":null;var i,a,u,c,g=f.getModuleCount()*t+2*r,l="";for(c="l"+t+",0 0,"+t+" -"+t+",0 0,-"+t+"z ",l+='<svg version="1.1" xmlns="http://www.w3.org/2000/svg"',l+=o.scalable?"":' width="'+g+'px" height="'+g+'px"',l+=' viewBox="0 0 '+g+" "+g+'" ',l+=' preserveAspectRatio="xMinYMin meet"',l+=n.text||e.text?' role="img" aria-labelledby="'+y([n.id,e.id].join(" ").trim())+'"':"",l+=">",l+=n.text?'<title id="'+y(n.id)+'">'+y(n.text)+"</title>":"",l+=e.text?'<description id="'+y(e.id)+'">'+y(e.text)+"</description>":"",l+='<rect width="100%" height="100%" fill="white" cx="0" cy="0"/>',l+='<path d="',a=0;a<f.getModuleCount();a+=1)for(u=a*t+r,i=0;i<f.getModuleCount();i+=1)f.isDark(a,i)&&(l+="M"+(i*t+r)+","+u+c);return l+='" stroke="transparent" fill="black"/>',l+="</svg>"},f.createDataURL=function(t,r){t=t||2,r=void 0===r?4*t:r;var e=f.getModuleCount()*t+2*r,n=r,o=e-r;return I(e,e,function(r,e){if(n<=r&&r<o&&n<=e&&e<o){var i=Math.floor((r-n)/t),a=Math.floor((e-n)/t);return f.isDark(a,i)?0:1}return 1})},f.createImgTag=function(t,r,e){t=t||2,r=void 0===r?4*t:r;var n=f.getModuleCount()*t+2*r,o="";return o+="<img",o+=' src="',o+=f.createDataURL(t,r),o+='"',o+=' width="',o+=n,o+='"',o+=' height="',o+=n,o+='"',e&&(o+=' alt="',o+=y(e),o+='"'),o+="/>"};var y=function(t){for(var r="",e=0;e<t.length;e+=1){var n=t.charAt(e);switch(n){case"<":r+="&lt;";break;case">":r+="&gt;";break;case"&":r+="&amp;";break;case'"':r+="&quot;";break;default:r+=n}}return r};return f.createASCII=function(t,r){if((t=t||1)<2)return function(t){t=void 0===t?2:t;var r,e,n,o,i,a=1*f.getModuleCount()+2*t,u=t,c=a-t,g={"██":"█","█ ":"▀"," █":"▄","  ":" "},l={"██":"▀","█ ":"▀"," █":" ","  ":" "},h="";for(r=0;r<a;r+=2){for(n=Math.floor((r-u)/1),o=Math.floor((r+1-u)/1),e=0;e<a;e+=1)i="█",u<=e&&e<c&&u<=r&&r<c&&f.isDark(n,Math.floor((e-u)/1))&&(i=" "),u<=e&&e<c&&u<=r+1&&r+1<c&&f.isDark(o,Math.floor((e-u)/1))?i+=" ":i+="█",h+=t<1&&r+1>=c?l[i]:g[i];h+="\n"}return a%2&&t>0?h.substring(0,h.length-a-1)+Array(a+1).join("▀"):h.substring(0,h.length-1)}(r);t-=1,r=void 0===r?2*t:r;var e,n,o,i,a=f.getModuleCount()*t+2*r,u=r,c=a-r,g=Array(t+1).join("██"),l=Array(t+1).join("  "),h="",s="";for(e=0;e<a;e+=1){for(o=Math.floor((e-u)/t),s="",n=0;n<a;n+=1)i=1,u<=n&&n<c&&u<=e&&e<c&&f.isDark(o,Math.floor((n-u)/t))&&(i=0),s+=i?g:l;for(o=0;o<t;o+=1)h+=s+"\n"}return h.substring(0,h.length-1)},f.renderTo2dContext=function(t,r){r=r||2;for(var e=f.getModuleCount(),n=0;n<e;n++)for(var o=0;o<e;o++)t.fillStyle=f.isDark(n,o)?"black":"white",t.fillRect(n*r,o*r,r,r)},f};t.stringToBytes=(t.stringToBytesFuncs={default:function(t){for(var r=[],e=0;e<t.length;e+=1){var n=t.charCodeAt(e);r.push(255&n)}return r}}).default,t.createStringToBytes=function(t,r){var e=function(){for(var e=S(t),n=function(){var t=e.read();if(-1==t)throw"eof";return t},o=0,i={};;){var a=e.read();if(-1==a)break;var u=n(),f=n()<<8|n();i[String.fromCharCode(a<<8|u)]=f,o+=1}if(o!=r)throw o+" != "+r;return i}(),n="?".charCodeAt(0);return function(t){for(var r=[],o=0;o<t.length;o+=1){var i=t.charCodeAt(o);if(i<128)r.push(i);else{var a=e[t.charAt(o)];"number"==typeof a?(255&a)==a?r.push(a):(r.push(a>>>8),r.push(255&a)):r.push(n)}}return r}};var r,e,n,o,i,a=1,u=2,f=4,c=8,g={L:1,M:0,Q:3,H:2},l=0,h=1,s=2,v=3,d=4,w=5,p=6,y=7,B=(r=[[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50],[6,30,54],[6,32,58],[6,34,62],[6,26,46,66],[6,26,48,70],[6,26,50,74],[6,30,54,78],[6,30,56,82],[6,30,58,86],[6,34,62,90],[6,28,50,72,94],[6,26,50,74,98],[6,30,54,78,102],[6,28,54,80,106],[6,32,58,84,110],[6,30,58,86,114],[6,34,62,90,118],[6,26,50,74,98,122],[6,30,54,78,102,126],[6,26,52,78,104,130],[6,30,56,82,108,134],[6,34,60,86,112,138],[6,30,58,86,114,142],[6,34,62,90,118,146],[6,30,54,78,102,126,150],[6,24,50,76,102,128,154],[6,28,54,80,106,132,158],[6,32,58,84,110,136,162],[6,26,54,82,110,138,166],[6,30,58,86,114,142,170]],e=1335,n=7973,i=function(t){for(var r=0;0!=t;)r+=1,t>>>=1;return r},(o={}).getBCHTypeInfo=function(t){for(var r=t<<10;i(r)-i(e)>=0;)r^=e<<i(r)-i(e);return 21522^(t<<10|r)},o.getBCHTypeNumber=function(t){for(var r=t<<12;i(r)-i(n)>=0;)r^=n<<i(r)-i(n);return t<<12|r},o.getPatternPosition=function(t){return r[t-1]},o.getMaskFunction=function(t){switch(t){case l:return function(t,r){return(t+r)%2==0};case h:return function(t,r){return t%2==0};case s:return function(t,r){return r%3==0};case v:return function(t,r){return(t+r)%3==0};case d:return function(t,r){return(Math.floor(t/2)+Math.floor(r/3))%2==0};case w:return function(t,r){return t*r%2+t*r%3==0};case p:return function(t,r){return(t*r%2+t*r%3)%2==0};case y:return function(t,r){return(t*r%3+(t+r)%2)%2==0};default:throw"bad maskPattern:"+t}},o.getErrorCorrectPolynomial=function(t){for(var r=k([1],0),e=0;e<t;e+=1)r=r.multiply(k([1,C.gexp(e)],0));return r},o.getLengthInBits=function(t,r){if(1<=r&&r<10)switch(t){case a:return 10;case u:return 9;case f:case c:return 8;default:throw"mode:"+t}else if(r<27)switch(t){case a:return 12;case u:return 11;case f:return 16;case c:return 10;default:throw"mode:"+t}else{if(!(r<41))throw"type:"+r;switch(t){case a:return 14;case u:return 13;case f:return 16;case c:return 12;default:throw"mode:"+t}}},o.getLostPoint=function(t){for(var r=t.getModuleCount(),e=0,n=0;n<r;n+=1)for(var o=0;o<r;o+=1){for(var i=0,a=t.isDark(n,o),u=-1;u<=1;u+=1)if(!(n+u<0||r<=n+u))for(var f=-1;f<=1;f+=1)o+f<0||r<=o+f||0==u&&0==f||a==t.isDark(n+u,o+f)&&(i+=1);i>5&&(e+=3+i-5)}for(n=0;n<r-1;n+=1)for(o=0;o<r-1;o+=1){var c=0;t.isDark(n,o)&&(c+=1),t.isDark(n+1,o)&&(c+=1),t.isDark(n,o+1)&&(c+=1),t.isDark(n+1,o+1)&&(c+=1),0!=c&&4!=c||(e+=3)}for(n=0;n<r;n+=1)for(o=0;o<r-6;o+=1)t.isDark(n,o)&&!t.isDark(n,o+1)&&t.isDark(n,o+2)&&t.isDark(n,o+3)&&t.isDark(n,o+4)&&!t.isDark(n,o+5)&&t.isDark(n,o+6)&&(e+=40);for(o=0;o<r;o+=1)for(n=0;n<r-6;n+=1)t.isDark(n,o)&&!t.isDark(n+1,o)&&t.isDark(n+2,o)&&t.isDark(n+3,o)&&t.isDark(n+4,o)&&!t.isDark(n+5,o)&&t.isDark(n+6,o)&&(e+=40);var g=0;for(o=0;o<r;o+=1)for(n=0;n<r;n+=1)t.isDark(n,o)&&(g+=1);return e+=Math.abs(100*g/r/r-50)/5*10},o),C=function(){for(var t=new Array(256),r=new Array(256),e=0;e<8;e+=1)t[e]=1<<e;for(e=8;e<256;e+=1)t[e]=t[e-4]^t[e-5]^t[e-6]^t[e-8];for(e=0;e<255;e+=1)r[t[e]]=e;var n={glog:function(t){if(t<1)throw"glog("+t+")";return r[t]},gexp:function(r){for(;r<0;)r+=255;for(;r>=256;)r-=255;return t[r]}};return n}();function k(t,r){if(void 0===t.length)throw t.length+"/"+r;var e=function(){for(var e=0;e<t.length&&0==t[e];)e+=1;for(var n=new Array(t.length-e+r),o=0;o<t.length-e;o+=1)n[o]=t[o+e];return n}(),n={getAt:function(t){return e[t]},getLength:function(){return e.length},multiply:function(t){for(var r=new Array(n.getLength()+t.getLength()-1),e=0;e<n.getLength();e+=1)for(var o=0;o<t.getLength();o+=1)r[e+o]^=C.gexp(C.glog(n.getAt(e))+C.glog(t.getAt(o)));return k(r,0)},mod:function(t){if(n.getLength()-t.getLength()<0)return n;for(var r=C.glog(n.getAt(0))-C.glog(t.getAt(0)),e=new Array(n.getLength()),o=0;o<n.getLength();o+=1)e[o]=n.getAt(o);for(o=0;o<t.getLength();o+=1)e[o]^=C.gexp(C.glog(t.getAt(o))+r);return k(e,0).mod(t)}};return n}var A=function(){var t=[[1,26,19],[1,26,16],[1,26,13],[1,26,9],[1,44,34],[1,44,28],[1,44,22],[1,44,16],[1,70,55],[1,70,44],[2,35,17],[2,35,13],[1,100,80],[2,50,32],[2,50,24],[4,25,9],[1,134,108],[2,67,43],[2,33,15,2,34,16],[2,33,11,2,34,12],[2,86,68],[4,43,27],[4,43,19],[4,43,15],[2,98,78],[4,49,31],[2,32,14,4,33,15],[4,39,13,1,40,14],[2,121,97],[2,60,38,2,61,39],[4,40,18,2,41,19],[4,40,14,2,41,15],[2,146,116],[3,58,36,2,59,37],[4,36,16,4,37,17],[4,36,12,4,37,13],[2,86,68,2,87,69],[4,69,43,1,70,44],[6,43,19,2,44,20],[6,43,15,2,44,16],[4,101,81],[1,80,50,4,81,51],[4,50,22,4,51,23],[3,36,12,8,37,13],[2,116,92,2,117,93],[6,58,36,2,59,37],[4,46,20,6,47,21],[7,42,14,4,43,15],[4,133,107],[8,59,37,1,60,38],[8,44,20,4,45,21],[12,33,11,4,34,12],[3,145,115,1,146,116],[4,64,40,5,65,41],[11,36,16,5,37,17],[11,36,12,5,37,13],[5,109,87,1,110,88],[5,65,41,5,66,42],[5,54,24,7,55,25],[11,36,12,7,37,13],[5,122,98,1,123,99],[7,73,45,3,74,46],[15,43,19,2,44,20],[3,45,15,13,46,16],[1,135,107,5,136,108],[10,74,46,1,75,47],[1,50,22,15,51,23],[2,42,14,17,43,15],[5,150,120,1,151,121],[9,69,43,4,70,44],[17,50,22,1,51,23],[2,42,14,19,43,15],[3,141,113,4,142,114],[3,70,44,11,71,45],[17,47,21,4,48,22],[9,39,13,16,40,14],[3,135,107,5,136,108],[3,67,41,13,68,42],[15,54,24,5,55,25],[15,43,15,10,44,16],[4,144,116,4,145,117],[17,68,42],[17,50,22,6,51,23],[19,46,16,6,47,17],[2,139,111,7,140,112],[17,74,46],[7,54,24,16,55,25],[34,37,13],[4,151,121,5,152,122],[4,75,47,14,76,48],[11,54,24,14,55,25],[16,45,15,14,46,16],[6,147,117,4,148,118],[6,73,45,14,74,46],[11,54,24,16,55,25],[30,46,16,2,47,17],[8,132,106,4,133,107],[8,75,47,13,76,48],[7,54,24,22,55,25],[22,45,15,13,46,16],[10,142,114,2,143,115],[19,74,46,4,75,47],[28,50,22,6,51,23],[33,46,16,4,47,17],[8,152,122,4,153,123],[22,73,45,3,74,46],[8,53,23,26,54,24],[12,45,15,28,46,16],[3,147,117,10,148,118],[3,73,45,23,74,46],[4,54,24,31,55,25],[11,45,15,31,46,16],[7,146,116,7,147,117],[21,73,45,7,74,46],[1,53,23,37,54,24],[19,45,15,26,46,16],[5,145,115,10,146,116],[19,75,47,10,76,48],[15,54,24,25,55,25],[23,45,15,25,46,16],[13,145,115,3,146,116],[2,74,46,29,75,47],[42,54,24,1,55,25],[23,45,15,28,46,16],[17,145,115],[10,74,46,23,75,47],[10,54,24,35,55,25],[19,45,15,35,46,16],[17,145,115,1,146,116],[14,74,46,21,75,47],[29,54,24,19,55,25],[11,45,15,46,46,16],[13,145,115,6,146,116],[14,74,46,23,75,47],[44,54,24,7,55,25],[59,46,16,1,47,17],[12,151,121,7,152,122],[12,75,47,26,76,48],[39,54,24,14,55,25],[22,45,15,41,46,16],[6,151,121,14,152,122],[6,75,47,34,76,48],[46,54,24,10,55,25],[2,45,15,64,46,16],[17,152,122,4,153,123],[29,74,46,14,75,47],[49,54,24,10,55,25],[24,45,15,46,46,16],[4,152,122,18,153,123],[13,74,46,32,75,47],[48,54,24,14,55,25],[42,45,15,32,46,16],[20,147,117,4,148,118],[40,75,47,7,76,48],[43,54,24,22,55,25],[10,45,15,67,46,16],[19,148,118,6,149,119],[18,75,47,31,76,48],[34,54,24,34,55,25],[20,45,15,61,46,16]],r=function(t,r){var e={};return e.totalCount=t,e.dataCount=r,e},e={};return e.getRSBlocks=function(e,n){var o=function(r,e){switch(e){case g.L:return t[4*(r-1)+0];case g.M:return t[4*(r-1)+1];case g.Q:return t[4*(r-1)+2];case g.H:return t[4*(r-1)+3];default:return}}(e,n);if(void 0===o)throw"bad rs block @ typeNumber:"+e+"/errorCorrectionLevel:"+n;for(var i=o.length/3,a=[],u=0;u<i;u+=1)for(var f=o[3*u+0],c=o[3*u+1],l=o[3*u+2],h=0;h<f;h+=1)a.push(r(c,l));return a},e}(),b=function(){var t=[],r=0,e={getBuffer:function(){return t},getAt:function(r){var e=Math.floor(r/8);return 1==(t[e]>>>7-r%8&1)},put:function(t,r){for(var n=0;n<r;n+=1)e.putBit(1==(t>>>r-n-1&1))},getLengthInBits:function(){return r},putBit:function(e){var n=Math.floor(r/8);t.length<=n&&t.push(0),e&&(t[n]|=128>>>r%8),r+=1}};return e},M=function(t){var r=a,e=t,n={getMode:function(){return r},getLength:function(t){return e.length},write:function(t){for(var r=e,n=0;n+2<r.length;)t.put(o(r.substring(n,n+3)),10),n+=3;n<r.length&&(r.length-n==1?t.put(o(r.substring(n,n+1)),4):r.length-n==2&&t.put(o(r.substring(n,n+2)),7))}},o=function(t){for(var r=0,e=0;e<t.length;e+=1)r=10*r+i(t.charAt(e));return r},i=function(t){if("0"<=t&&t<="9")return t.charCodeAt(0)-"0".charCodeAt(0);throw"illegal char :"+t};return n},x=function(t){var r=u,e=t,n={getMode:function(){return r},getLength:function(t){return e.length},write:function(t){for(var r=e,n=0;n+1<r.length;)t.put(45*o(r.charAt(n))+o(r.charAt(n+1)),11),n+=2;n<r.length&&t.put(o(r.charAt(n)),6)}},o=function(t){if("0"<=t&&t<="9")return t.charCodeAt(0)-"0".charCodeAt(0);if("A"<=t&&t<="Z")return t.charCodeAt(0)-"A".charCodeAt(0)+10;switch(t){case" ":return 36;case"$":return 37;case"%":return 38;case"*":return 39;case"+":return 40;case"-":return 41;case".":return 42;case"/":return 43;case":":return 44;default:throw"illegal char :"+t}};return n},m=function(r){var e=f,n=t.stringToBytes(r),o={getMode:function(){return e},getLength:function(t){return n.length},write:function(t){for(var r=0;r<n.length;r+=1)t.put(n[r],8)}};return o},L=function(r){var e=c,n=t.stringToBytesFuncs.SJIS;if(!n)throw"sjis not supported.";!function(){var t=n("友");if(2!=t.length||38726!=(t[0]<<8|t[1]))throw"sjis not supported."}();var o=n(r),i={getMode:function(){return e},getLength:function(t){return~~(o.length/2)},write:function(t){for(var r=o,e=0;e+1<r.length;){var n=(255&r[e])<<8|255&r[e+1];if(33088<=n&&n<=40956)n-=33088;else{if(!(57408<=n&&n<=60351))throw"illegal char at "+(e+1)+"/"+n;n-=49472}n=192*(n>>>8&255)+(255&n),t.put(n,13),e+=2}if(e<r.length)throw"illegal char at "+(e+1)}};return i},D=function(){var t=[],r={writeByte:function(r){t.push(255&r)},writeShort:function(t){r.writeByte(t),r.writeByte(t>>>8)},writeBytes:function(t,e,n){e=e||0,n=n||t.length;for(var o=0;o<n;o+=1)r.writeByte(t[o+e])},writeString:function(t){for(var e=0;e<t.length;e+=1)r.writeByte(t.charCodeAt(e))},toByteArray:function(){return t},toString:function(){var r="";r+="[";for(var e=0;e<t.length;e+=1)e>0&&(r+=","),r+=t[e];return r+="]"}};return r},S=function(t){var r=t,e=0,n=0,o=0,i={read:function(){for(;o<8;){if(e>=r.length){if(0==o)return-1;throw"unexpected end of file./"+o}var t=r.charAt(e);if(e+=1,"="==t)return o=0,-1;t.match(/^\s$/)||(n=n<<6|a(t.charCodeAt(0)),o+=6)}var i=n>>>o-8&255;return o-=8,i}},a=function(t){if(65<=t&&t<=90)return t-65;if(97<=t&&t<=122)return t-97+26;if(48<=t&&t<=57)return t-48+52;if(43==t)return 62;if(47==t)return 63;throw"c:"+t};return i},I=function(t,r,e){for(var n=function(t,r){var e=t,n=r,o=new Array(t*r),i={setPixel:function(t,r,n){o[r*e+t]=n},write:function(t){t.writeString("GIF87a"),t.writeShort(e),t.writeShort(n),t.writeByte(128),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(255),t.writeByte(255),t.writeByte(255),t.writeString(","),t.writeShort(0),t.writeShort(0),t.writeShort(e),t.writeShort(n),t.writeByte(0);var r=a(2);t.writeByte(2);for(var o=0;r.length-o>255;)t.writeByte(255),t.writeBytes(r,o,255),o+=255;t.writeByte(r.length-o),t.writeBytes(r,o,r.length-o),t.writeByte(0),t.writeString(";")}},a=function(t){for(var r=1<<t,e=1+(1<<t),n=t+1,i=u(),a=0;a<r;a+=1)i.add(String.fromCharCode(a));i.add(String.fromCharCode(r)),i.add(String.fromCharCode(e));var f,c,g,l=D(),h=(f=l,c=0,g=0,{write:function(t,r){if(t>>>r!=0)throw"length over";for(;c+r>=8;)f.writeByte(255&(t<<c|g)),r-=8-c,t>>>=8-c,g=0,c=0;g|=t<<c,c+=r},flush:function(){c>0&&f.writeByte(g)}});h.write(r,n);var s=0,v=String.fromCharCode(o[s]);for(s+=1;s<o.length;){var d=String.fromCharCode(o[s]);s+=1,i.contains(v+d)?v+=d:(h.write(i.indexOf(v),n),i.size()<4095&&(i.size()==1<<n&&(n+=1),i.add(v+d)),v=d)}return h.write(i.indexOf(v),n),h.write(e,n),h.flush(),l.toByteArray()},u=function(){var t={},r=0,e={add:function(n){if(e.contains(n))throw"dup key:"+n;t[n]=r,r+=1},size:function(){return r},indexOf:function(r){return t[r]},contains:function(r){return void 0!==t[r]}};return e};return i}(t,r),o=0;o<r;o+=1)for(var i=0;i<t;i+=1)n.setPixel(i,o,e(i,o));var a=D();n.write(a);for(var u=function(){var t=0,r=0,e=0,n="",o={},i=function(t){n+=String.fromCharCode(a(63&t))},a=function(t){if(t<0);else{if(t<26)return 65+t;if(t<52)return t-26+97;if(t<62)return t-52+48;if(62==t)return 43;if(63==t)return 47}throw"n:"+t};return o.writeByte=function(n){for(t=t<<8|255&n,r+=8,e+=1;r>=6;)i(t>>>r-6),r-=6},o.flush=function(){if(r>0&&(i(t<<6-r),t=0,r=0),e%3!=0)for(var o=3-e%3,a=0;a<o;a+=1)n+="="},o.toString=function(){return n},o}(),f=a.toByteArray(),c=0;c<f.length;c+=1)u.writeByte(f[c]);return u.flush(),"data:image/gif;base64,"+u};return t}();qrcode.stringToBytesFuncs["UTF-8"]=function(t){return function(t){for(var r=[],e=0;e<t.length;e++){var n=t.charCodeAt(e);n<128?r.push(n):n<2048?r.push(192|n>>6,128|63&n):n<55296||n>=57344?r.push(224|n>>12,128|n>>6&63,128|63&n):(e++,n=65536+((1023&n)<<10|1023&t.charCodeAt(e)),r.push(240|n>>18,128|n>>12&63,128|n>>6&63,128|63&n))}return r}(t)},function(t){"function"==typeof define&&define.amd?define([],t):"object"==typeof exports&&(module.exports=t())}(function(){return qrcode});
+</script>
+<script>
+/* =========================================================
+   MONDO DI GIOCO — avventura ispirata a "La casa dalle finestre
+   che ridono" (Pupi Avati, 1976). Testi originali.
+   ========================================================= */
+const INTRO = [
+  "Valli di Comacchio, fine estate 1950. L'acqua è ferma, l'aria è ferma, e anche il paese sembra trattenere il fiato.",
+  "Sei Stefano, restauratore. Il Comune ti ha chiamato per riportare alla luce un affresco nella chiesa: il martirio di San Sebastiano, dipinto da Buono Legnani, che qui tutti chiamano «il pittore delle agonie». Legnani è morto da anni. Nessuno ne parla volentieri.",
+  "Ieri il tuo amico Antonio, che ti aveva procurato il lavoro, è caduto da una finestra. Dicono che fosse ubriaco. Tu non ci credi."
+];
+
+const AMBIENT = [
+  "Da qualche parte, oltre la nebbia, qualcuno ride piano.",
+  "Un cane abbaia una volta sola, poi smette di colpo.",
+  "Ti sembra di sentire dei passi che si fermano quando ti fermi tu.",
+  "L'odore dell'acqua stagnante ti entra in gola.",
+  "Una persiana sbatte. Non c'è vento."
+];
+const SPOOKY = ["argine","cortile","cantina","corridoio","camera","soffitta"];
+
+const ROOMS = {
+  piazza: {
+    name: "La piazza",
+    desc: () => "Una piazza di terra battuta, con un pozzo al centro e le case basse tutte intorno, le persiane chiuse. A nord c'è la chiesa, a est la locanda dove alloggi. A sud una strada sterrata scende verso l'argine e le valli." + (F.allarme ? " Il campanile batte un'ora che non esiste." : ""),
+    exits: { n:"chiesa", e:"locanda", s:"argine" },
+    ways: { n:"la chiesa", e:"la locanda, la tua stanza", s:"lo sterrato verso l'argine" },
+    scenery: {
+      pozzo: { words:["pozzo"], desc:"Guardi giù. L'acqua nera ti rimanda una faccia che, per un istante, ti sembra sorridere." },
+      case: { words:["case","persiane","finestre"], desc:"Dietro le persiane qualcuno si muove. Quando ti giri, si fermano." }
+    }
+  },
+  locanda: {
+    name: "La locanda",
+    desc: () => "La tua stanza alla locanda: un letto di ferro, un comodino, un catino d'acqua. Al muro, accanto alla porta, c'è il telefono a manovella dell'oste, l'unico del paese. Si esce a ovest, sulla piazza.",
+    exits: { o:"piazza" },
+    ways: { o:"torni in piazza" },
+    scenery: {
+      telefono: { words:["telefono","apparecchio"], desc:"Un telefono a muro con la manovella. Collega il paese alla caserma dei carabinieri di Comacchio." },
+      letto: { words:["letto","comodino","catino"], desc:"Lenzuola umide. Non hai dormito granché." }
+    }
+  },
+  chiesa: {
+    name: "La chiesa",
+    desc: () => "Navata stretta, banchi consumati, odore di cera e di umidità. Sulla parete di fondo un'impalcatura di legno sale fino all'affresco di San Sebastiano, ancora coperto da uno strato di sporco e calce. A est una porticina dà sulla sagrestia; a sud si torna in piazza.",
+    exits: { s:"piazza", su:"impalcatura", e:"sagrestia" },
+    ways: { s:"torni in piazza", su:"l'impalcatura e l'affresco", e:"una porticina dà sulla sagrestia" },
+    scenery: {
+      affresco: { words:["affresco","sebastiano","santo","dipinto","parete"], desc:() => F.affrescoPulito ? afrescoPulito() : "Da qui si vede poco. Bisognerebbe salire sull'impalcatura." },
+      impalcatura: { words:["impalcatura","scala"], desc:"Assi e tubi legati con il fil di ferro. Regge, più o meno." }
+    }
+  },
+  impalcatura: {
+    name: "Sull'impalcatura",
+    desc: () => F.affrescoPulito
+      ? "Sei in cima all'impalcatura, a un palmo dall'affresco ripulito. Ora che le figure sono tornate visibili, preferiresti non averle viste. Si scende in chiesa."
+      : "Sei in cima all'impalcatura, a un palmo dall'affresco. San Sebastiano è legato a un albero, il corpo trafitto. Ai suoi lati, due figure sono ancora nascoste sotto la calce. Si scende in chiesa.",
+    /* Un'uscita che inizia con "!" non è una stanza ma un'azione:
+       compare sulla croce ed esegue il comando scritto dopo il "!".
+       hideDir: la punta non mostra la direzione e il giocatore non può
+       usarla scrivendo "sud"; si attiva solo dall'etichetta o col comando. */
+    exits: { giu:"chiesa", s:"!scavalca l'impalcatura" },
+    hideDir: { s:true },
+    ways: { giu:"scendi dalla scala, nella navata", s:"scavalca l'impalcatura" },
+    scenery: {
+      parapetto: { words:["parapetto","tubo","assi","asse","ringhiera"], desc:"Un tubo di ferro all'altezza della vita, legato alle assi con il fil di ferro." },
+      affresco: { words:["affresco","sebastiano","santo","dipinto","figure","figura","calce"],
+        desc:() => F.affrescoPulito ? afrescoPulito() : "Sotto la calce si intuiscono due sagome, una per lato del santo. Con gli attrezzi giusti potresti <em>pulire</em> l'affresco." }
+    }
+  },
+  sagrestia: {
+    name: "La sagrestia",
+    desc: () => "Un armadio per i paramenti, un inginocchiatoio, uno scrittoio con sopra un grosso registro rilegato in pelle. " + (F.allarme ? "" : "Il parroco è seduto allo scrittoio e alza gli occhi quando entri. Ha mani piccole e una voce dolce, troppo dolce. ") + "La porticina a ovest torna in chiesa.",
+    exits: { o:"chiesa" },
+    ways: { o:"la porticina torna in chiesa" },
+    scenery: {
+      parroco: { words:["parroco","prete","don","sacerdote"], desc:"Un uomo minuto, senza età, con la tonaca abbottonata fino al collo. Ti guarda senza sbattere le palpebre.",
+        parla:() => "«Il Legnani era un'anima tormentata, figliolo», dice il parroco. «Certe cose si dipingono per dimenticarle. Lei faccia il suo lavoro e non scavi più del necessario.» Poi sorride. Non ti piace quel sorriso." },
+      armadio: { words:["armadio","paramenti"], desc:"Tonache, stole, una cotta ingiallita. In fondo, un paio di scarpe da donna, nere, con il tacco basso." }
+    }
+  },
+  argine: {
+    name: "L'argine",
+    dark: true,
+    darkDesc: "La nebbia è così fitta che non vedi le tue mani. Senti l'acqua scorrere da qualche parte, vicinissima. La strada per tornare in paese è a nord.",
+    desc: () => "Il fascio della torcia scava un tunnel nella nebbia. L'argine corre dritto tra due specchi d'acqua immobili. Una barca da pesca, mezza affondata, è tirata in secca sul bordo. A sud, oltre il canneto, si indovina la sagoma di una casa isolata. A nord torni in paese.",
+    exits: { n:"piazza", s:"cortile" },
+    ways: { n:"torni in paese", s:"la casa oltre il canneto" },
+    guard: { s: () => haveLight() ? null : "Fai qualche passo nella nebbia, il piede affonda nel fango e per poco non finisci nel canale. Senza luce non vai da nessuna parte." },
+    scenery: {
+      barca: { words:["barca","scafo"], desc:"Una barca da pesca piena d'acqua piovana e di foglie marce." },
+      canale: { words:["canale","acqua","valli","canneto"], desc:"Acqua nera e ferma. Una volta, di notte, ci hanno ripescato un uomo. Così dicono." }
+    }
+  },
+  cortile: {
+    name: "Il cortile della casa",
+    desc: () => "Davanti a te c'è la casa. È vecchia, scrostata, e le sue finestre sono state dipinte con delle bocche: labbra rosse, denti bianchi, tutte spalancate in una risata muta. La porta d'ingresso è chiusa da una catena. In basso, a filo del terreno, c'è la grata di una cantina" + (F.grataAperta ? ", ora divelta: puoi scendere." : ".") + " L'argine è a nord.",
+    exits: { n:"argine", giu:"cantina" },
+    ways: { n:"l'argine nella nebbia", giu:() => F.grataAperta ? "la grata divelta, la cantina" : "la grata della cantina, chiusa" },
+    guard: { giu: () => F.grataAperta ? null : "La grata è chiusa e arrugginita nei cardini. A mani nude non si muove." },
+    scenery: {
+      finestre: { words:["finestre","finestra","bocche","bocca","casa","risata"], desc:"Da vicino vedi che la vernice delle bocche è stata ripassata di recente. Qualcuno, in quella casa, si prende ancora cura del sorriso." },
+      catena: { words:["catena","porta","lucchetto","ingresso"], desc:"Una catena grossa come un polso, con un lucchetto nuovo. Non è una porta che si apre da fuori.",
+        apri:() => has("piede") ? "Provi a fare leva sulla catena con il piede di porco. Il lucchetto è nuovo e non cede di un millimetro. Meglio cercare un'altra via." : "La catena è grossa come un polso e il lucchetto è nuovo. Da qui non si entra." },
+      grata: { words:["grata","inferriata","cantina"], desc:() => F.grataAperta ? "La grata è divelta. Sotto, il buio." : "Una grata di ferro sopra una finestrella della cantina. I cardini sono marci: con una leva forse cederebbero.",
+        apri:() => forzaGrata() }
+    }
+  },
+  cantina: {
+    name: "La cantina",
+    dark: true,
+    darkDesc: "Buio. Odore di terra bagnata e di qualcos'altro, dolciastro, che preferisci non riconoscere.",
+    desc: () => "Una cantina dal soffitto basso. Damigiane vuote, sacchi di calce, barattoli di colore secco allineati su uno scaffale. Su un tavolo c'è un vecchio grammofono senza tromba. Una scala di pietra sale verso la casa; la grata da cui sei entrato è in alto.",
+    exits: { su:"corridoio", n:"cortile" },
+    ways: { su:"la scala di pietra, la casa", n:"la grata, fuori nel cortile" },
+    scenery: {
+      colori: { words:["barattoli","colori","colore","scaffale","pigmenti"], desc:"Pigmenti: terra di Siena, ocra, nero d'ossa. Uno dei barattoli è etichettato a mano: «rosso vero». Lo rimetti giù in fretta." },
+      calce: { words:["sacchi","calce","damigiane"], desc:"Sacchi di calce viva, come quelli che si usano per coprire un affresco. O qualcos'altro." },
+      grammofono: { words:["grammofono","tavolo"], desc:"Un grammofono sventrato. Accanto c'era sicuramente altro: ci sono segni di polvere a forma di scatola." }
+    }
+  },
+  corridoio: {
+    name: "Il corridoio",
+    dark: true,
+    darkDesc: "Buio. Il pavimento scricchiola. Senti un respiro lento venire da destra.",
+    desc: () => "Un corridoio lungo e spoglio. Dall'interno, le bocche dipinte sulle finestre si vedono al contrario: la luce che filtra disegna sul pavimento tante risate rovesciate. A est una porta socchiusa, da cui viene un respiro lento. Una scala ripida sale alla soffitta; un'altra scende in cantina.",
+    exits: { e:"camera", su:"soffitta", giu:"cantina" },
+    ways: { e:"una porta socchiusa, un respiro", su:"la scala ripida della soffitta", giu:"la cantina" },
+    scenery: {
+      finestre: { words:["finestre","finestra","bocche","risate"], desc:"Da qui sembrano ghigni. Ti accorgi che sono tutte rivolte verso il paese, verso il campanile." }
+    }
+  },
+  camera: {
+    name: "La camera",
+    dark: true,
+    darkDesc: "Buio, e un respiro lento, vicino.",
+    desc: () => "Una camera da letto che sa di canfora. Nel letto c'è una vecchia, immobile sotto le coperte, il viso rivolto al soffitto. Sul comodino, un rosario e un bicchiere d'acqua. La porta è a ovest.",
+    exits: { o:"corridoio" },
+    ways: { o:"il corridoio" },
+    scenery: {
+      vecchia: { words:["vecchia","donna","signora","letto"], desc:"Sembra paralizzata. Non muove un muscolo. Ma gli occhi ti seguono, e quando ti avvicini alla porta, la bocca si piega.",
+        parla:() => "Le parli piano. Lei non risponde. Solo, quando ti volti per andare, senti un fiato che somiglia a una risata." },
+      rosario: { words:["rosario","comodino","bicchiere"], desc:"Il bicchiere è pieno fino all'orlo. Qualcuno l'ha riempito oggi." }
+    }
+  },
+  soffitta: {
+    name: "La soffitta",
+    dark: true,
+    darkDesc: "Buio sotto il tetto. Le travi scricchiolano sopra la tua testa.",
+    desc: () => "Lo studio del pittore. Tele girate contro il muro, cavalletti, un materasso. Sui quadri che riesci a vedere ci sono solo agonie: corpi, volti deformati dal dolore, sempre osservati da due donne in disparte. La scala scende al corridoio.",
+    exits: { giu:"corridoio" },
+    ways: { giu:"il corridoio, la camera" },
+    scenery: {
+      quadri: { words:["quadri","quadro","tele","tela","cavalletti"], desc:"Le due donne compaiono in ogni quadro. Una ha i capelli raccolti. L'altra ha le mani piccole." },
+      materasso: { words:["materasso"], desc:"Un materasso macchiato, con una coperta militare piegata con cura." }
+    }
+  }
+};
+
+/* Stessa morte per "salta" e "scavalca l'impalcatura". */
+const MORTE_IMPALCATURA = "Superi il parapetto dell'impalcatura. Per un istante i banchi sembrano vicini, a portata di salto. Poi la navata ti viene incontro, molto prima di quanto pensassi, con un colpo sordo che rimbomba fino all'altare. Mentre tutto si spegne, l'ultima cosa che vedi è l'affresco sopra di te: San Sebastiano, e le due figure ai suoi lati che sorridono. Come Antonio, anche tu sei caduto dall'alto.";
+
+function afrescoPulito(){
+  return "Ai lati di San Sebastiano ora si vedono le due figure: due donne. Non piangono il santo, lo stanno ferendo, con una calma terribile. Una ha i capelli raccolti. L'altra ha le mani piccole, da bambina.";
+}
+
+const ITEMS = {
+  borsa:     { name:"la borsa da restauratore", words:["borsa","attrezzi","bisturi","solvente","spugna"], loc:"inv", desc:"Bisturi, spugne, solvente, pennelli. Gli attrezzi del mestiere." },
+  busta:     { name:"una busta", words:["busta","lettera","biglietto"], loc:"locanda", desc:"Una busta gialla infilata sotto la porta, con il tuo nome scritto a matita. È la grafia di Antonio.",
+               leggi:() => { award("busta",5); return "«Stefano, se leggi questa vuol dire che ho fatto tardi. Il Legnani non dipingeva di fantasia. Le sorelle lo aiutavano, e forse non sono morte come dicono. Ascolta il nastro. Non fidarti di nessuno, nemmeno di chi porta l'abito. — A.»"; } },
+  nastro:    { name:"una bobina di nastro", words:["nastro","bobina"], loc:"locanda", desc:"Una bobina per registratore, con un'etichetta: «A. — appunti»." },
+  registratore:{ name:"un registratore a bobine", words:["registratore","magnetofono"], loc:"locanda", desc:"Il registratore portatile di Antonio. Pesante, ma funziona." },
+  torcia:    { name:"una torcia elettrica", words:["torcia","pila","lampada"], loc:"locanda", feel:true, desc:() => F.torciaAccesa ? "La torcia è accesa." : "Una torcia elettrica, spenta." },
+  piede:     { name:"un piede di porco", words:["piede","porco","leva","palanchino","ferro"], loc:"argine", desc:"Un piede di porco arrugginito, dimenticato in fondo alla barca." },
+  disco:     { name:"un disco inciso a mano", words:["disco","incisione"], loc:"cantina", desc:"Un disco di cera graffiato a mano, in una scatola di cartone. Sull'etichetta, una sola parola: «Buono».",
+               ascolta:() => { award("disco",10); return "Non hai un grammofono funzionante, ma Antonio aveva trascritto qualcosa su un foglietto incollato alla scatola. È la voce del pittore, parola per parola: «Le mie sorelle mi portano i modelli. Io dipingo l'ultimo respiro. Loro restano a guardare, e ridono. Ridono sempre.»"; } },
+  fotografia:{ name:"una fotografia", words:["fotografia","foto","ritratto"], loc:"soffitta", desc:() => "Una vecchia foto: un uomo con il pennello in mano e due donne ai lati. Una ha i capelli raccolti. L'altra, minuta, con le mani piccole, ha un viso che conosci. L'hai visto stamattina, sopra una tonaca." },
+  registro:  { name:"il registro parrocchiale", words:["registro","libro"], loc:"sagrestia", fixed:true, desc:"Un registro dei morti della parrocchia, rilegato in pelle.",
+               leggi:() => { award("registro",5); return "Sfogli fino agli anni della guerra. «Legnani Buono, pittore — morto per sua mano.» Più sotto, a parte, una riga aggiunta con un altro inchiostro: «Le sorelle Legnani partite per ignota destinazione.» Nessuna data. Nessuna sepoltura."; } }
+};
+
+/* ---------- codice di salvataggio ----------
+   GAME_ID: 3 lettere + 1 cifra di versione, diverso per ogni storia.
+   Cambia la cifra se aggiungi stanze, oggetti o flag: i vecchi codici
+   verranno rifiutati invece di caricare uno stato sbagliato.
+   GAME_URL: indirizzo pubblico del gioco (es. la pagina su GitHub).
+   Il QR punta a GAME_URL#codice, così si apre già caricato. */
+const GAME_ID  = "FCR1";
+const GAME_URL = "https://claude.ai/artifact/8n9MWw5Fws3qwSpK8HYpuw";
+const SAVE_SPEC = {
+  flags:  ["torciaAccesa","affrescoPulito","grataAperta","allarme","nastroAscoltato"],
+  awards: { busta:5, nastro:10, affresco:15, registro:5, piede:5, grata:10, disco:10, foto:15, finale:25 }
+};
+
+/* =========================================================
+   MOTORE
+   ========================================================= */
+let F, I, S;
+const START_ROOM = "piazza";
+function newGame(){
+  F = {}; SAVE_SPEC.flags.forEach(k => F[k] = false);
+  I = {}; for (const k in ITEMS) I[k] = { loc: ITEMS[k].loc };
+  S = { loc:START_ROOM, score:0, moves:0, awarded:{}, over:false };
+}
+/* Controlla e ripara uno stato arrivato da fuori (salvataggio locale,
+   aggiornamento della pagina): campi mancanti o di versioni vecchie
+   tornano ai valori iniziali invece di far crashare il gioco. */
+function adoptState(d){
+  if (!d || typeof d !== "object" || !d.S || !ROOMS[d.S.loc]) return false;
+  const nF = {}; SAVE_SPEC.flags.forEach(k => nF[k] = !!(d.F && d.F[k]));
+  const nI = {};
+  for (const k in ITEMS){
+    const l = d.I && d.I[k] ? d.I[k].loc : undefined;
+    nI[k] = { loc: (l === null || l === "inv" || ROOMS[l]) ? l : ITEMS[k].loc };
+  }
+  const nA = {}; for (const k in SAVE_SPEC.awards) if (d.S.awarded && d.S.awarded[k]) nA[k] = true;
+  F = nF; I = nI;
+  S = { loc:d.S.loc, moves: Math.max(0, Math.floor(+d.S.moves) || 0), over: !!d.S.over, awarded:nA,
+        score: Object.keys(nA).reduce((t,k) => t + SAVE_SPEC.awards[k], 0) };
+  return true;
+}
+const DIR = { n:"n", nord:"n", s:"s", sud:"s", e:"e", est:"e", o:"o", ovest:"o", w:"o", su:"su", sali:"su", alto:"su", g:"giu", giu:"giu", scendi:"giu", basso:"giu" };
+const DIRNAME = { n:"nord", s:"sud", e:"est", o:"ovest", su:"su", giu:"giù" };
+const STOP = new Set("il lo la i gli le l un uno una del dello della dell dei degli delle al allo alla all ai agli alle nel nello nella nell nei negli nelle sul sullo sulla sull sui dal dallo dalla dall dai dalle di a da in con col coi e verso dentro sopra sotto per mio mia".split(" "));
+
+const logEl = document.getElementById("log"), scr = document.getElementById("screen");
+function say(t, cls){ const p=document.createElement("p"); p.className=(cls?cls+" ":"")+"new"; p.innerHTML=t; logEl.appendChild(p); }
+const val = v => typeof v === "function" ? v() : v;
+const here = () => ROOMS[S.loc];
+function award(k,n){ if (S.awarded[k]) return; S.awarded[k]=true; S.score+=n; }
+function haveLight(){ return F.torciaAccesa && (I.torcia.loc==="inv" || I.torcia.loc===S.loc); }
+function canSee(){ return !here().dark || haveLight(); }
+function itemsAt(loc){ return Object.keys(I).filter(k => I[k].loc===loc && !ITEMS[k].fixed); }
+function has(k){ return I[k].loc==="inv"; }
+function list(a){ return a.length<2 ? a.join("") : a.slice(0,-1).join(", ")+" e "+a[a.length-1]; }
+
+const realExits = r => Object.keys(r.exits).filter(d => r.exits[d].charAt(0) !== "!");
+function actionCmd(text){
+  const parts = normalize(text).split(/\s+/);
+  return dispatch(parts[0], parts.slice(1).filter(w => !STOP.has(w)), parts);
+}
+const normalize = raw => raw.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[’']/g," ").replace(/[^a-z0-9 ]/g," ").trim();
+function describe(){
+  const r = here();
+  say(r.name, "room");
+  if (!canSee()){
+    say(r.darkDesc);
+    const felt = itemsAt(S.loc).filter(k => ITEMS[k].feel).map(k => ITEMS[k].name);
+    if (felt.length) say("A tentoni, ai tuoi piedi, riconosci " + list(felt) + ".");
+  } else {
+    say(val(r.desc));
+    const its = itemsAt(S.loc).map(k => ITEMS[k].name);
+    if (its.length) say("Qui vedi " + list(its) + ".");
+  }
+  say("Uscite: " + realExits(r).map(d => DIRNAME[d]).join(", ") + ".", "meta");
+}
+
+function find(words){
+  const vis = canSee();
+  for (const w of words){
+    for (const k in I){
+      if (!ITEMS[k].words.includes(w)) continue;
+      if (I[k].loc==="inv" || (I[k].loc===S.loc && (vis || ITEMS[k].feel))) return { kind:"item", key:k, def:ITEMS[k] };
+    }
+    if (vis) for (const k in (here().scenery||{})){
+      const sc = here().scenery[k]; if (sc.words.includes(w)) return { kind:"scenery", key:k, def:sc };
+    }
+  }
+  return null;
+}
+function mentionsKnown(words){
+  return words.some(w => Object.values(ITEMS).some(d => d.words.includes(w)) || Object.values(ROOMS).some(r => Object.values(r.scenery||{}).some(s => s.words.includes(w))));
+}
+
+function go(d){
+  const r = here(), to = r.exits[d];
+  if (!to || (r.hideDir && r.hideDir[d])) return say("Da quella parte non si può andare.");
+  if (r.guard && r.guard[d]) { const m = r.guard[d](); if (m) return say(m); }
+  if (to.charAt(0) === "!") return actionCmd(to.slice(1));
+  if (r.dark && !canSee()) say("Avanzi a tentoni, una mano contro il muro.", "amb");
+  if (F.allarme && to==="camera") return die("Spingi la porta della camera. Il letto è vuoto, le coperte buttate da parte. Dietro di te, vicinissima, una voce di vecchia comincia a ridere. È l'ultima cosa che senti.");
+  if (F.allarme && to==="sagrestia") return die("Il parroco ti aspetta in piedi, dietro la porta. Non dice niente. Sorride, con quelle mani piccole strette intorno a qualcosa che brilla. La porticina si chiude alle tue spalle.");
+  S.loc = to;
+  describe();
+}
+function die(t){ say(t,"bad"); say("*** Sei morto ***","end"); say("Scrivi <em>ricomincia avventura</em> per riprovare, oppure <em>carica</em> se avevi salvato.","meta"); S.over = true; }
+function win(){
+  award("finale",25);
+  say("Giri la manovella. Una voce assonnata, poi sveglia di colpo: è il maresciallo di Comacchio. Gli racconti tutto, la casa, la fotografia, il disco. Lui ascolta in silenzio e dice che all'alba sarà lì, con i suoi uomini.");
+  say("Aspetti l'alba seduto sul letto, la sedia contro la porta. Quando arriva la camionetta dei carabinieri, la nebbia si alza e il paese sembra un paese qualunque.");
+  say("Dalla finestra vedi il parroco attraversare la piazza. Si ferma, alza la testa verso di te e ti saluta con la sua mano piccola. Sorride. Poi entra in chiesa, e la porta si chiude.");
+  say(`*** Fine. Punteggio ${S.score}/100 in ${S.moves} mosse ***`,"end win");
+  say("Scrivi <em>ricomincia avventura</em> per una nuova partita.","meta");
+  S.over = true;
+}
+
+function forzaGrata(){
+  if (S.loc!=="cortile") return "Qui non c'è niente da forzare.";
+  if (F.grataAperta) return "È già divelta.";
+  if (!has("piede")) return "I cardini sono marci, ma a mani nude non basta. Ti servirebbe una leva.";
+  F.grataAperta = true; award("grata",10);
+  return "Infili il piede di porco sotto la grata e fai leva. Il ferro geme, poi i cardini cedono con uno schiocco che rimbomba nelle valli. Per un lungo momento resti immobile, in ascolto. Niente. Sotto di te, una finestrella buia porta in cantina.";
+}
+
+function doTake(words){
+  if (!words.length) return say("Prendere cosa?");
+  if (words[0]==="tutto"){
+    if (!canSee()) return say("Al buio non vedi niente da prendere.");
+    const its = itemsAt(S.loc); if (!its.length) return say("Non c'è niente da prendere.");
+    its.forEach(k => I[k].loc="inv"); say("Prendi " + list(its.map(k=>ITEMS[k].name)) + ".");
+    its.forEach(onTake); return;
+  }
+  const o = find(words);
+  if (!o) return say(canSee() ? "Qui non vedo niente del genere." : "Al buio non trovi niente.");
+  if (o.kind==="scenery" || o.def.fixed) return say("Non puoi portarlo via.");
+  if (has(o.key)) return say("Ce l'hai già.");
+  I[o.key].loc="inv"; say("Prendi " + o.def.name + "."); onTake(o.key);
+}
+function onTake(k){
+  if (k==="piede") award("piede",5);
+  if (k==="fotografia" && !F.allarme){
+    F.allarme = true; award("foto",15);
+    say("Mentre infili la foto in tasca, sotto di te una molla del letto cigola. Poi un fruscio di coperte. Poi, lenti, dei passi che attraversano la camera. Qualcuno, in questa casa, non è paralizzato come sembrava.","bad");
+  }
+}
+function doDrop(words){
+  if (!words.length) return say("Lasciare cosa?");
+  const o = find(words);
+  if (!o || o.kind!=="item" || !has(o.key)) return say("Non ce l'hai.");
+  I[o.key].loc = S.loc; say("Lasci " + o.def.name + ".");
+}
+function doInv(){
+  const its = Object.keys(I).filter(k=>I[k].loc==="inv");
+  say(its.length ? "Hai con te " + list(its.map(k => ITEMS[k].name + (k==="torcia"&&F.torciaAccesa?" (accesa)":""))) + "." : "Non hai niente con te.");
+}
+function doExamine(words){
+  if (!words.length) return describe();
+  const o = find(words);
+  if (!o) return say(canSee() ? "Qui non vedo niente del genere." : "È troppo buio per vedere qualcosa.");
+  if (o.key==="fotografia") award("foto",15);
+  say(val(o.def.desc));
+}
+function doOpen(words){
+  const o = find(words);
+  if (!o) return say(words.length ? "Qui non c'è niente del genere da aprire." : "Aprire cosa?");
+  if (o.def.apri) return say(o.def.apri());
+  if (o.key==="busta") return doRead(["busta"]);
+  say("Non si apre.");
+}
+function doRead(words){
+  const o = find(words);
+  if (!o) return say(words.length ? "Qui non c'è niente del genere." : "Leggere cosa?");
+  if (o.def.leggi) return say(o.def.leggi());
+  if (o.key==="disco") return say(ITEMS.disco.ascolta());
+  say("Non c'è niente da leggere.");
+}
+function doListen(words){
+  if (!words.length) return say(S.loc==="camera"&&canSee() ? "Il respiro della vecchia. Regolare. Troppo regolare." : "Senti il silenzio delle valli, che non è mai silenzio davvero.");
+  const o = find(words);
+  if (!o) return say("Qui non c'è niente del genere.");
+  if (o.key==="nastro"){
+    if (!has("registratore") && I.registratore.loc!==S.loc) return say("Ti serve il registratore.");
+    F.nastroAscoltato = true; award("nastro",10);
+    return say("Infili la bobina e premi il tasto. Fruscio, poi la voce di Antonio, bassa e affannata: «…la casa è oltre l'argine, a sud. Quella con le finestre. Di notte, senza luce, ti perdi e finisci in acqua. La porta è incatenata, ma la grata della cantina ha i cardini marci: basta una leva. I pescatori ne lasciano sempre in giro, nelle barche. E Stefano… guarda bene chi c'è nell'affresco.» Poi un rumore, e il nastro finisce.");
+  }
+  if (o.key==="disco") return say(ITEMS.disco.ascolta());
+  if (o.key==="registratore") return say(has("nastro") ? "Scrivi <em>ascolta nastro</em>." : "Il registratore è vuoto.");
+  say("Non senti niente di particolare.");
+}
+function doLight(words){
+  const o = find(words.length?words:["torcia"]);
+  if (!o) return say(words.length && !words.includes("torcia") ? "Qui non c'è niente del genere." : "Non hai niente da accendere.");
+  if (o.key!=="torcia") return say("Non è una cosa che si accende.");
+  if (F.torciaAccesa) return say("È già accesa.");
+  F.torciaAccesa = true; say("Accendi la torcia. Il fascio è giallo e debole, ma è meglio di niente.");
+  if (here().dark) describe();
+}
+function doOff(words){
+  const o = find(words.length?words:["torcia"]);
+  if (!o || o.key!=="torcia") return say("Non c'è niente da spegnere.");
+  if (!F.torciaAccesa) return say("È già spenta.");
+  F.torciaAccesa = false; say("Spegni la torcia. Il buio ti si chiude addosso.");
+  if (here().dark) describe();
+}
+function doClean(words){
+  const target = find(words.length?words:["affresco"]);
+  if (!target || target.key!=="affresco") return say(S.loc==="chiesa" ? "Devi salire sull'impalcatura per arrivare all'affresco." : "Qui non c'è niente da pulire.");
+  if (S.loc!=="impalcatura") return say("Devi salire sull'impalcatura per arrivare all'affresco.");
+  if (F.affrescoPulito) return say("L'hai già pulito. Non è il caso di guardarlo ancora.");
+  if (!has("borsa")) return say("Ti servono gli attrezzi.");
+  F.affrescoPulito = true; award("affresco",15);
+  say("Lavori per un'ora con il bisturi e la spugna imbevuta di solvente. La calce viene via a scaglie. A poco a poco, ai lati del santo, emergono due figure.");
+  say(afrescoPulito());
+}
+function doTalk(words){
+  const o = find(words);
+  if (o && o.def.parla) return say(o.def.parla());
+  say("Nessuno ti risponde.");
+}
+function doPhone(){
+  if (S.loc!=="locanda") return say("Qui non c'è nessun telefono. L'unico del paese è quello a manovella della locanda, a est della piazza.");
+  if (has("fotografia") && has("disco")){ award("disco",10); return win(); }
+  if (has("fotografia")) return say("Giri la manovella e racconti tutto al maresciallo. «Una fotografia vecchia? Mi serve qualcosa di più, signor restauratore.» Ti manca un'altra prova: la voce del pittore stesso.");
+  if (has("disco")) return say("Giri la manovella e parli del disco. «Un disco graffiato? Senza qualcosa che leghi quella gente a oggi, non posso muovermi.» Ti serve un'altra prova.");
+  return say("Giri la manovella. Dall'altra parte, il maresciallo ascolta e sospira: «Mi porti delle prove, e poi ne parliamo.»");
+}
+function doUse(words){
+  const o = find(words);
+  if (!o) return say("Usare cosa?");
+  if (o.key==="piede") return say(forzaGrata());
+  if (o.key==="borsa") return doClean([]);
+  if (o.key==="torcia") return doLight(["torcia"]);
+  if (o.key==="registratore" || o.key==="nastro") return doListen(["nastro"]);
+  if (o.key==="telefono") return doPhone();
+  say("Prova a essere più preciso: per esempio <em>leggi</em>, <em>ascolta</em>, <em>pulisci</em>, <em>forza</em>.");
+}
+function help(){
+  say("Scrivi comandi brevi in italiano, di solito verbo + oggetto.","meta");
+  say("Movimento: <em>nord sud est ovest su giù</em> (anche n, s, e, o). Azioni: <em>guarda, esamina X, prendi X, lascia X, inventario, leggi X, ascolta X, accendi X, spegni X, apri X, forza X, pulisci X, parla con X, telefona, usa X</em>.","meta");
+  say("Partita: <em>salva, carica, esporta, importa, ricomincia avventura, punti</em> (li trovi anche nel menu ☰ in alto a destra). Con la freccia ↑ ripeti i comandi precedenti.","meta");
+}
+
+const SAVEKEY = "finestre-che-ridono-save";
+function save(){ try { localStorage.setItem(SAVEKEY, JSON.stringify({F,I,S})); say("Partita salvata in questo browser.","meta"); } catch(e){ say("Non riesco a salvare: il browser blocca la memoria locale.","meta"); } }
+function load(){
+  let d=null; try { d = JSON.parse(localStorage.getItem(SAVEKEY)); } catch(e){}
+  if (!d) return say("Nessuna partita salvata.","meta");
+  if (!adoptState(d)) return say("Il salvataggio è danneggiato o di una versione diversa e non si può caricare.","meta");
+  say("Partita caricata.","meta"); describe();
+}
+function restart(){ logEl.innerHTML=""; newGame(); INTRO.forEach(t=>say(t)); describe(); }
+
+/* Codice: tutto lo stato in pochi bit, scritto in base32 Crockford
+   (niente I, L, O, U: non si confondono scrivendo a mano), più un controllo
+   di 10 bit che scarta i codici scritti male. */
+const B32 = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+const bitsFor = n => Math.max(1, Math.ceil(Math.log2(n)));
+const toBits = (n, len) => { const a=[]; for (let i=len-1;i>=0;i--) a.push((n>>i)&1); return a; };
+const fromBits = (a, p, len) => { let n=0; for (let i=0;i<len;i++) n=n*2+a[p+i]; return n; };
+function check10(s){ let h=2166136261; for (let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return (h>>>0) & 1023; }
+function layout(){
+  const rooms=Object.keys(ROOMS), items=Object.keys(ITEMS), awards=Object.keys(SAVE_SPEC.awards);
+  const rb=bitsFor(rooms.length), lb=bitsFor(rooms.length+2);
+  return { rooms, items, awards, rb, lb, data: SAVE_SPEC.flags.length + awards.length + rb + items.length*lb + 12 + 1 };
+}
+function exportCode(){
+  const L = layout();
+  let b = [];
+  SAVE_SPEC.flags.forEach(k => b.push(F[k]?1:0));
+  L.awards.forEach(k => b.push(S.awarded[k]?1:0));
+  b = b.concat(toBits(L.rooms.indexOf(S.loc), L.rb));
+  L.items.forEach(k => { const l=I[k].loc; b = b.concat(toBits(l===null?0 : l==="inv"?1 : 2+L.rooms.indexOf(l), L.lb)); });
+  b = b.concat(toBits(Math.min(S.moves,4095), 12)); b.push(S.over?1:0);
+  b = b.concat(toBits(check10(GAME_ID + b.join("")), 10));
+  while (b.length % 5) b.push(0);
+  let s=""; for (let i=0;i<b.length;i+=5) s += B32[fromBits(b,i,5)];
+  return GAME_ID + "-" + s.match(/.{1,4}/g).join("-");
+}
+function importCode(raw){
+  let s = String(raw).toUpperCase().replace(/[^0-9A-Z]/g,"");
+  if (!s) return "Scrivi un codice.";
+  if (s.slice(0,3) !== GAME_ID.slice(0,3)) return "Questo codice non è di questa avventura.";
+  if (s.slice(0,4) !== GAME_ID) return "Questo codice è di una versione diversa dell'avventura.";
+  s = s.slice(4).replace(/O/g,"0").replace(/[IL]/g,"1");
+  const L = layout(), total = L.data + 10;
+  if (s.length !== Math.ceil(total/5)) return "Il codice è incompleto o ha caratteri in più.";
+  let b=[];
+  for (const c of s){ const v=B32.indexOf(c); if (v<0) return "Il codice contiene caratteri non validi."; b=b.concat(toBits(v,5)); }
+  if (fromBits(b, L.data, 10) !== check10(GAME_ID + b.slice(0,L.data).join(""))) return "Il codice non torna: controlla di averlo scritto bene.";
+  let p=0; const nF={}, nA={};
+  SAVE_SPEC.flags.forEach(k => nF[k] = !!b[p++]);
+  L.awards.forEach(k => { if (b[p++]) nA[k]=true; });
+  const ri = fromBits(b,p,L.rb); p+=L.rb; if (ri >= L.rooms.length) return "Il codice non è valido.";
+  const nI={};
+  for (const k of L.items){ const v=fromBits(b,p,L.lb); p+=L.lb; if (v >= L.rooms.length+2) return "Il codice non è valido."; nI[k] = { loc: v===0?null : v===1?"inv" : L.rooms[v-2] }; }
+  const moves = fromBits(b,p,12); p+=12; const over = !!b[p++];
+  F=nF; I=nI;
+  S={ loc:L.rooms[ri], moves, over, awarded:nA, score: Object.keys(nA).reduce((t,k)=>t+SAVE_SPEC.awards[k],0) };
+  return null;
+}
+
+function parse(raw){
+  if (raw.trim() === "?") return help();
+  const t = normalize(raw);
+  if (!t) return say("Scrivi un comando. Per l'elenco scrivi <em>aiuto</em>.","meta");
+  const parts = t.split(/\s+/);
+  const v = parts[0];
+  const rest = parts.slice(1).filter(w => !STOP.has(w));
+  if (["ricomincia","restart","riavvia"].includes(v)){
+    if (parts[1]==="avventura") return restart();
+    return say("Per ripartire da capo scrivi <em>ricomincia avventura</em>. Il salvataggio non viene cancellato.","meta");
+  }
+  if (v==="carica") return load();
+  if (v==="esporta"){ const c=exportCode(); say("Codice di salvataggio: <em>"+c+"</em>","meta"); openExport(); return; }
+  if (v==="importa"){
+    if (parts.length<2) return openImport();
+    const err = importCode(parts.slice(1).join(""));
+    if (err) return say(err,"meta");
+    logEl.innerHTML=""; say("Partita importata dal codice.","meta"); return describe();
+  }
+  if (S.over) return say("La partita è finita. Scrivi <em>ricomincia avventura</em> o <em>carica</em>.","meta");
+  const free = ["aiuto","help","punti","salva","inventario","i","inv"].includes(v);
+  if (!free) S.moves++;
+  dispatch(v, rest, parts);
+  if (!free && !S.over && SPOOKY.includes(S.loc) && S.moves % 5 === 0)
+    say(AMBIENT[(S.moves/5) % AMBIENT.length], "amb");
+}
+function dispatch(v, rest, parts){
+  if (DIR[v]) return go(DIR[v]);
+  if (["vai","va","andare","cammina","corri","entra","esci","fuggi","scappa","torna"].includes(v)){
+    const d = rest.map(w=>DIR[w]).find(Boolean);
+    if (d) return go(d);
+    if (v==="entra" && S.loc==="cortile") return go("giu");
+    if (v==="entra" && S.loc==="piazza") return go("n");
+    const ex = realExits(here());
+    if (ex.length === 1) return go(ex[0]);
+    return say("In che direzione? Le uscite sono: " + ex.map(d => DIRNAME[d]).join(", ") + ".");
+  }
+  switch (v){
+    case "guarda": case "l": case "osserva": return rest.length ? doExamine(rest) : describe();
+    case "esamina": case "x": case "ispeziona": case "controlla": case "cerca": case "sfoglia": return doExamine(rest);
+    case "prendi": case "raccogli": case "piglia": case "afferra": return doTake(rest);
+    case "lascia": case "posa": case "butta": case "molla": return doDrop(rest);
+    case "inventario": case "i": case "inv": return doInv();
+    case "apri": return doOpen(rest);
+    case "forza": case "scardina": case "solleva": case "rompi": case "spacca":
+      return rest.some(w=>["grata","inferriata","cantina"].includes(w)) || (!rest.length && S.loc==="cortile") ? say(forzaGrata()) : say("Non ti sembra il caso.");
+    case "leggi": return doRead(rest);
+    case "ascolta": case "senti": return doListen(rest);
+    case "accendi": return doLight(rest);
+    case "spegni": return doOff(rest);
+    case "pulisci": case "restaura": case "gratta": case "lava": return doClean(rest);
+    case "parla": case "chiedi": case "interroga": return doTalk(rest);
+    case "telefona": case "chiama": return doPhone();
+    case "usa": case "adopera": return doUse(rest);
+    case "nuota": return S.loc==="argine" ? die("Scendi nel canale. L'acqua è fredda e il fondo non c'è. Qualcosa, tra le alghe, ti prende per una caviglia.") : say("Qui non c'è dove nuotare.");
+    case "scavalca": case "supera":
+      if (S.loc==="impalcatura") return die(MORTE_IMPALCATURA);
+      return say("Qui non c'è niente da scavalcare.");
+    case "salta": case "buttati": case "lanciati": case "tuffati":
+      if (S.loc==="impalcatura") return die(MORTE_IMPALCATURA);
+      if (v==="tuffati" && S.loc==="argine") return die("Scendi nel canale. L'acqua è fredda e il fondo non c'è. Qualcosa, tra le alghe, ti prende per una caviglia.");
+      return say("Saltelli sul posto per scrollarti di dosso l'umidità. Non serve a molto.");
+    case "prega": return say(S.loc==="chiesa" ? "Ti inginocchi in un banco. Dall'alto, il santo ti guarda. Ti sembra che anche lui sorrida." : "Mormori una preghiera che non dicevi da bambino.");
+    case "dormi": return say(S.loc==="locanda" ? "Chiudi gli occhi. Sogni bocche dipinte che si aprono e si chiudono. Ti svegli sudato: meglio restare sveglio." : "Non è il posto per dormire.");
+    case "aspetta": case "z": return say("Il tempo passa. La nebbia no.");
+    case "punti": return say(`Hai ${S.score} punti su 100, in ${S.moves} mosse.`,"meta");
+    case "aiuto": case "help": return help();
+    case "salva": return save();
+    case "ridi": return say("Provi a ridere. Ti esce un suono che non riconosci. Da qualche parte, qualcuno ride insieme a te.");
+  }
+  if (mentionsKnown(parts)) return say("Non so come farlo. Prova con un altro verbo, oppure scrivi <em>aiuto</em>.");
+  say("Non capisco. Scrivi <em>aiuto</em> per l'elenco dei comandi.");
+}
+
+/* ---------- interfaccia ---------- */
+const input = document.getElementById("cmd"), hist=[]; let hi=0;
+const esc = s => s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const finePointer = !!(window.matchMedia && window.matchMedia("(pointer: fine)").matches);
+function run(c){
+  if (typeof menu !== "undefined") menu.open = false;
+  say(esc(c),"cmd"); parse(c); updateStatus(); scr.scrollTop = scr.scrollHeight;
+}
+function updateStatus(){
+  document.getElementById("st-luogo").innerHTML = "<b>"+here().name+"</b>";
+  document.getElementById("st-punti").textContent = S.score;
+  document.getElementById("st-mosse").textContent = S.moves;
+  updateCompass();
+}
+
+/* ---------- croce delle uscite in 3D ----------
+   Assi: est = +x, su = +y, nord = +z (verso il fondo).
+   Vista quasi isometrica che oscilla piano; si può ruotare trascinando. */
+const CP = document.getElementById("compass"), CV = document.getElementById("cv"), LB = document.getElementById("labels");
+const CTX = CV.getContext ? CV.getContext("2d") : null;
+const AXES = { n:[0,0,1], s:[0,0,-1], e:[1,0,0], o:[-1,0,0], su:[0,1,0], giu:[0,-1,0] };
+const DIRCMD = { n:"nord", s:"sud", e:"est", o:"ovest", su:"su", giu:"giu" };
+const reduceMotion = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+let cW=0, cH=0, yawOff=0, pitchOff=0, dragging=null, hoverDir=null, t0=performance.now();
+const tok = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim() || "#999";
+const COL = {};
+function readColors(){ ["--fg","--hi","--dim","--faint","--blood","--bg","--torch"].forEach(k => COL[k]=tok(k)); }
+const labelEls = {};
+for (const d in AXES){
+  const b = document.createElement("button"); b.type="button"; b.className="cl"; b.dataset.d=d; b.hidden=true;
+  b.addEventListener("click", ev => { ev.stopPropagation(); run(b.dataset.cmd || DIRCMD[d]); });
+  b.addEventListener("mouseenter", () => hoverDir=d); b.addEventListener("mouseleave", () => hoverDir=null);
+  b.addEventListener("focus", () => hoverDir=d); b.addEventListener("blur", () => hoverDir=null);
+  LB.appendChild(b); labelEls[d]=b;
+}
+const labelSize = {};
+function measureLabels(){ for (const d in labelEls){ const b = labelEls[d]; labelSize[d] = { w:b.offsetWidth, h:b.offsetHeight }; } }
+function updateCompass(){
+  if (!S) return;
+  hoverDir = null;
+  const r = here(), lit = canSee();
+  for (const d in AXES){
+    const b = labelEls[d], to = r.exits[d];
+    if (!to){ b.hidden = true; b.style.display="none"; continue; }
+    const txt = lit ? val((r.ways||{})[d]) || "" : "a tentoni, nel buio";
+    const hid = !!(r.hideDir && r.hideDir[d]);
+    b.dataset.cmd = hid ? to.slice(1) : DIRCMD[d];
+    b.innerHTML = hid ? txt : "<b>" + DIRNAME[d] + "</b>" + txt;
+    b.classList.toggle("dark", !lit);
+    b.setAttribute("aria-label", hid ? txt : "Vai a " + DIRNAME[d] + ": " + txt);
+    b.hidden = false; b.style.display="block";
+  }
+  measureLabels();
+}
+function resizeCompass(){
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cW = CP.clientWidth; cH = CP.clientHeight;
+  CV.width = Math.round(cW*dpr); CV.height = Math.round(cH*dpr);
+  if (CTX) CTX.setTransform(dpr,0,0,dpr,0,0);
+  measureLabels();
+}
+function project(v, yaw, pitch, L){
+  const [x,y,z] = v;
+  const x1 = x*Math.cos(yaw) + z*Math.sin(yaw), z1 = -x*Math.sin(yaw) + z*Math.cos(yaw);
+  const y2 = y*Math.cos(pitch) + z1*Math.sin(pitch), depth = z1*Math.cos(pitch) - y*Math.sin(pitch);
+  const k = 4 / (4 + depth*0.9);            // prospettiva leggera
+  return { x: cW/2 + x1*L*k, y: cH*0.52 - y2*L*k, depth, k };
+}
+function drawFigure(c, cx, cy, s){
+  // il personaggio: cappotto lungo, visto di tre quarti
+  c.save(); c.translate(cx, cy); c.scale(s, s);
+  if (F && F.torciaAccesa){
+    const g = c.createRadialGradient(9,-18,0, 9,-18,34);
+    g.addColorStop(0, "rgba(233,196,106,.45)"); g.addColorStop(1, "rgba(233,196,106,0)");
+    c.fillStyle = g; c.beginPath(); c.arc(9,-18,34,0,Math.PI*2); c.fill();
+  }
+  c.fillStyle = "rgba(0,0,0,.45)"; c.beginPath(); c.ellipse(0,1,11,3.5,0,0,Math.PI*2); c.fill();
+  c.strokeStyle = COL["--bg"]; c.lineWidth = 1.2; c.lineJoin = "round";
+  c.fillStyle = COL["--fg"];
+  c.beginPath(); c.moveTo(-3.5,0); c.lineTo(-2.5,-9); c.lineTo(-0.5,-9); c.lineTo(-1,0); c.closePath(); c.fill(); c.stroke();
+  c.beginPath(); c.moveTo(1,0); c.lineTo(0.5,-9); c.lineTo(2.5,-9); c.lineTo(3.5,0); c.closePath(); c.fill(); c.stroke();
+  const coat = c.createLinearGradient(-8,0,8,0); coat.addColorStop(0, COL["--dim"]); coat.addColorStop(.55, COL["--hi"]); coat.addColorStop(1, COL["--dim"]);
+  c.fillStyle = coat;
+  c.beginPath(); c.moveTo(-6,-27); c.lineTo(6,-27); c.lineTo(8.5,-8); c.lineTo(-8.5,-8); c.closePath(); c.fill(); c.stroke();
+  c.beginPath(); c.moveTo(6,-25); c.lineTo(10,-16); c.lineTo(8.5,-15); c.lineTo(5,-21); c.closePath(); c.fill(); c.stroke();
+  c.fillStyle = COL["--hi"]; c.beginPath(); c.arc(0,-32,4.6,0,Math.PI*2); c.fill(); c.stroke();
+  c.fillStyle = COL["--fg"]; c.beginPath(); c.ellipse(0,-35.5,6.5,1.6,0,0,Math.PI*2); c.fill(); c.stroke();
+  c.beginPath(); c.ellipse(0,-37,3.6,2.4,0,Math.PI,0); c.fill(); c.stroke();
+  if (F && F.torciaAccesa){ c.fillStyle = COL["--torch"]; c.beginPath(); c.arc(9.5,-15.5,1.8,0,Math.PI*2); c.fill(); }
+  c.restore();
+}
+function frame(now){
+  requestAnimationFrame(frame);
+  if (!CTX || !S || !cW) return;
+  const t = (now - t0)/1000;
+  if (!dragging){ yawOff *= 0.92; pitchOff *= 0.92; }
+  const sway = reduceMotion ? 0 : Math.sin(t*0.5)*0.12;
+  const yaw = Math.PI/4 + sway + yawOff, pitch = 0.38 + (reduceMotion?0:Math.sin(t*0.37)*0.04) + pitchOff;
+  const narrow = cW < 520;
+  const L = Math.min(cH*0.29, cW*(narrow?0.19:0.17));
+  const c = CTX; c.clearRect(0,0,cW,cH);
+  const r = here(), lit = canSee();
+  const O = project([0,0,0], yaw, pitch, L);
+  // anello sul piano del terreno
+  c.beginPath();
+  for (let i=0;i<=48;i++){ const a=i/48*Math.PI*2, p=project([Math.cos(a)*0.42,0,Math.sin(a)*0.42], yaw, pitch, L); i?c.lineTo(p.x,p.y):c.moveTo(p.x,p.y); }
+  c.strokeStyle = COL["--faint"]; c.lineWidth = 1; c.stroke();
+  const arms = Object.keys(AXES).map(d => {
+    const open = !!r.exits[d], len = open ? 1 : 0.5;
+    return { d, open, tip: project(AXES[d].map(v=>v*len), yaw, pitch, L) };
+  }).sort((a,b) => b.tip.depth - a.tip.depth);
+  const drawArm = a => {
+    const hot = a.d === hoverDir, k = a.tip.k;
+    const dx = a.tip.x - O.x, dy = a.tip.y - O.y, ln = Math.hypot(dx,dy)||1, nx = -dy/ln, ny = dx/ln;
+    const w0 = (a.open ? 6 : 3.5)*O.k, w1 = (a.open ? 3 : 1.6)*k;
+    // trave a sezione piena: faccia in ombra + faccia in luce
+    c.beginPath(); c.moveTo(O.x+nx*w0, O.y+ny*w0); c.lineTo(a.tip.x+nx*w1, a.tip.y+ny*w1); c.lineTo(a.tip.x, a.tip.y); c.lineTo(O.x, O.y); c.closePath();
+    c.fillStyle = a.open ? (hot ? COL["--hi"] : COL["--fg"]) : COL["--faint"]; c.globalAlpha = a.open ? (a.tip.depth>0.2 ? 0.7 : 1) : 0.8; c.fill();
+    c.beginPath(); c.moveTo(O.x-nx*w0, O.y-ny*w0); c.lineTo(a.tip.x-nx*w1, a.tip.y-ny*w1); c.lineTo(a.tip.x, a.tip.y); c.lineTo(O.x, O.y); c.closePath();
+    c.fillStyle = a.open ? COL["--dim"] : COL["--faint"]; c.fill(); c.globalAlpha = 1;
+    if (a.open){
+      const R = (hot ? 8.5 : 7)*k, g = c.createRadialGradient(a.tip.x-R*0.35, a.tip.y-R*0.35, R*0.1, a.tip.x, a.tip.y, R);
+      g.addColorStop(0, lit ? "#f0a39b" : COL["--fg"]); g.addColorStop(0.45, lit ? COL["--blood"] : COL["--dim"]); g.addColorStop(1, "rgba(0,0,0,.9)");
+      c.fillStyle = g; c.beginPath(); c.arc(a.tip.x, a.tip.y, R, 0, Math.PI*2); c.fill();
+    } else {
+      c.fillStyle = COL["--faint"]; c.beginPath(); c.arc(a.tip.x, a.tip.y, 2.5*k, 0, Math.PI*2); c.fill();
+    }
+  };
+  arms.filter(a => a.tip.depth >= 0 || a.d==="su").forEach(drawArm);
+  drawFigure(c, O.x, O.y, (narrow?1.15:1.45)*O.k);
+  arms.filter(a => a.tip.depth < 0 && a.d!=="su").forEach(drawArm);
+  // etichette accanto alle punte
+  for (const a of arms){
+    const el = labelEls[a.d]; if (!a.open || el.hidden) continue;
+    const sz = labelSize[a.d] || { w:0, h:0 }, w = sz.w, h = sz.h;
+    const dx = a.tip.x - O.x, dy = a.tip.y - O.y, ln = Math.hypot(dx,dy)||1, ux = dx/ln, uy = dy/ln;
+    const gap = 10*a.tip.k + 4;
+    let x = a.tip.x + ux*gap, y = a.tip.y + uy*gap;
+    x -= ux > 0.35 ? 0 : ux < -0.35 ? w : w/2;
+    y -= uy > 0.3 ? 0 : uy < -0.3 ? h : h/2;
+    x = Math.max(4, Math.min(cW - w - 4, x)); y = Math.max(4, Math.min(cH - h - 4, y));
+    el.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`;
+  }
+}
+CP.addEventListener("pointerdown", e => {
+  if (e.target.closest(".cl")) return;
+  dragging = { x:e.clientX, y:e.clientY, yaw:yawOff, pitch:pitchOff };
+  CP.classList.add("drag"); try { CP.setPointerCapture(e.pointerId); } catch(err){}
+});
+CP.addEventListener("pointermove", e => {
+  if (!dragging) return;
+  yawOff = dragging.yaw + (e.clientX - dragging.x)*0.012;
+  pitchOff = Math.max(-0.35, Math.min(0.75, dragging.pitch + (e.clientY - dragging.y)*0.008));
+});
+const endDrag = () => { dragging = null; CP.classList.remove("drag"); };
+CP.addEventListener("pointerup", endDrag); CP.addEventListener("pointercancel", endDrag);
+readColors(); resizeCompass();
+if (window.ResizeObserver) new ResizeObserver(resizeCompass).observe(CP); else window.addEventListener("resize", resizeCompass);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(measureLabels).catch(() => {});
+requestAnimationFrame(frame);
+/* Invio del comando: niente <form>, perché dentro le cornici protette
+   (come l'app Claude) l'invio dei moduli può essere bloccato del tutto.
+   Gestiamo direttamente il tasto Invio e il pulsante. */
+function sendCommand(){
+  const c = input.value.trim(); if (!c) return;
+  hist.push(c); hi = hist.length; input.value = ""; run(c);
+}
+document.getElementById("send").addEventListener("click", e => { e.preventDefault(); sendCommand(); });
+input.addEventListener("keydown", e => {
+  if ((e.key === "Enter" || e.keyCode === 13) && !e.isComposing){ e.preventDefault(); sendCommand(); return; }
+  else if (e.key==="ArrowUp" && hi>0){ hi--; input.value=hist[hi]; e.preventDefault(); }
+  else if (e.key==="ArrowDown"){ if (hi<hist.length-1){ hi++; input.value=hist[hi]; } else { hi=hist.length; input.value=""; } e.preventDefault(); }
+});
+document.getElementById("keys").addEventListener("click", e => {
+  const b=e.target.closest("button[data-c]"); if (b) run(b.dataset.c);
+});
+const menu = document.getElementById("menu");
+menu.addEventListener("click", e => {
+  const b=e.target.closest("button[data-c],button[data-a]"); if (!b) return;
+  menu.open = false;
+  if (b.dataset.a==="export") return run("esporta");
+  if (b.dataset.a==="import") return openImport();
+  run(b.dataset.c); if (finePointer) input.focus();
+});
+document.addEventListener("click", e => { if (menu.open && !menu.contains(e.target)) menu.open = false; });
+
+/* ---------- finestra esporta / importa ---------- */
+const ov=document.getElementById("ov"), ovEx=document.getElementById("ov-export"), ovIm=document.getElementById("ov-import");
+const exCode=document.getElementById("ex-code"), exQr=document.getElementById("ex-qr"), exHint=document.getElementById("ex-hint");
+const imCode=document.getElementById("im-code"), imErr=document.getElementById("im-err");
+const ovIsOpen = () => ov.classList.contains("open");
+function openOv(which){
+  ov.classList.add("open");
+  ovEx.classList.toggle("on", which==="ex");
+  ovIm.classList.toggle("on", which==="im");
+}
+function closeOv(){ ov.classList.remove("open"); ovEx.classList.remove("on"); ovIm.classList.remove("on"); }
+function openExport(){
+  const c = exportCode();
+  exCode.textContent = c;
+  exQr.style.display = "none"; exQr.innerHTML = ""; exHint.textContent = "";
+  document.getElementById("ex-copy").textContent = "Copia codice";
+  if (typeof qrcode === "function"){
+    try {
+      const q = qrcode(0,"M"); q.addData(GAME_URL ? GAME_URL + "#" + c : c); q.make();
+      exQr.innerHTML = q.createSvgTag(4, 2); exQr.style.display = "block";
+      exHint.textContent = GAME_URL ? "Il QR apre il gioco con la partita già caricata." : "Il QR contiene il codice: copialo e incollalo in Importa partita.";
+    } catch(e){ exHint.textContent = ""; }
+  } else exHint.textContent = "Il QR non è disponibile: usa il codice.";
+  openOv("ex");
+  if (finePointer) document.getElementById("ex-copy").focus();
+}
+function openImport(){ imErr.textContent=""; imCode.value=""; openOv("im"); imCode.focus(); }
+document.getElementById("ex-copy").addEventListener("click", e => {
+  const btn=e.currentTarget, c=exCode.textContent;
+  const sel = () => { const r=document.createRange(); r.selectNodeContents(exCode); const s=getSelection(); s.removeAllRanges(); s.addRange(r); btn.textContent="Selezionato: copialo"; };
+  try { navigator.clipboard.writeText(c).then(() => { btn.textContent="Copiato"; setTimeout(()=>btn.textContent="Copia codice",1600); }, sel); } catch(err){ sel(); }
+});
+function doImport(){
+  const err = importCode(imCode.value);
+  if (err){ imErr.textContent = err; return; }
+  closeOv(); logEl.innerHTML=""; say("Partita importata dal codice.","meta"); describe(); updateStatus(); scr.scrollTop=scr.scrollHeight;
+}
+document.getElementById("im-go").addEventListener("click", doImport);
+imCode.addEventListener("keydown", e => { if (e.key==="Enter"){ e.preventDefault(); doImport(); } });
+ov.addEventListener("click", e => {
+  if (e.target===ov || (e.target.closest && e.target.closest("[data-close]"))){ e.preventDefault(); e.stopPropagation(); closeOv(); }
+});
+document.addEventListener("keydown", e => {
+  if (e.key!=="Escape") return;
+  if (ovIsOpen()) return closeOv();
+  if (menu.open){ menu.open=false; menu.querySelector("summary").focus(); }
+});
+function start(data){
+  if (data && adoptState(data)){ logEl.innerHTML = typeof data.log === "string" ? data.log : ""; if (!logEl.innerHTML) describe(); }
+  else {
+    newGame();
+    let h=""; try { h = decodeURIComponent((location.hash||"").slice(1)); } catch(e){}
+    const looksLikeCode = h && h.toUpperCase().replace(/[^0-9A-Z]/g,"").startsWith(GAME_ID.slice(0,3));
+    const err = looksLikeCode ? importCode(h) : null;
+    if (looksLikeCode){ try { history.replaceState(null,"",location.pathname+location.search); } catch(e){} }
+    if (looksLikeCode && !err){
+      say("Partita ripresa dal codice nel link.","meta"); describe();
+    } else {
+      INTRO.forEach(t=>say(t)); describe(); say("Scrivi <em>aiuto</em> se è la tua prima avventura testuale.","meta");
+      if (looksLikeCode) say("Il codice nel link non è stato caricato: " + err.charAt(0).toLowerCase() + err.slice(1), "meta");
+    }
+  }
+  updateStatus(); scr.scrollTop = scr.scrollHeight;
+}
+window.claude?.hot?.snapshot?.(() => ({F,I,S,log:logEl.innerHTML}));
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+</script>
