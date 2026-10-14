@@ -98,6 +98,7 @@ h1 span{color:var(--blood)}
 .keys button:hover{border-color:var(--dim);color:var(--hi)}
 .keys button:focus-visible,#send:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
 @media (max-width:520px){h1{font-size:clamp(1rem,5vw,1.3rem);letter-spacing:0}body{font-size:17px}.screen{padding:12px 14px}}
+@media (max-height:640px){h1{font-size:1rem}.compass{height:168px}.app{gap:8px;padding-block:8px}.cl{font-size:.74rem;line-height:1.05;padding:2px 5px;max-width:112px}.cl b{font-size:.6rem}}
 @media (prefers-reduced-motion:no-preference){.log p.new{animation:in .4s ease-out}@keyframes in{from{opacity:0;filter:blur(2px)}to{opacity:1;filter:none}}}
 </style>
 <style>[hidden]{display:none!important}html,body{margin:0}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);box-sizing:border-box}</style>
@@ -165,7 +166,7 @@ h1 span{color:var(--blood)}
     <section class="pane" id="ov-import">
       <h2>Importa partita</h2>
       <p>Scrivi o incolla il codice di salvataggio. Maiuscole, minuscole e trattini non contano.</p>
-      <input id="im-code" type="text" placeholder="FCR1-XXXX-XXXX-XXXX-XXXX" autocapitalize="characters" autocomplete="off" spellcheck="false">
+      <input id="im-code" type="text" placeholder="FCR2-XXXX-XXXX-XXXX-XXXX" autocapitalize="characters" autocomplete="off" spellcheck="false">
       <p class="err" id="im-err" aria-live="polite"></p>
       <div class="actions">
         <button type="button" class="btn" id="im-go">Importa</button>
@@ -184,12 +185,13 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
 <script>
 /* =========================================================
    MONDO DI GIOCO — avventura ispirata a "La casa dalle finestre
-   che ridono" (Pupi Avati, 1976). Testi originali.
+   che ridono" (Pupi Avati, 1976). Testi e trama originali.
    ========================================================= */
 const INTRO = [
   "Valli di Comacchio, fine estate 1950. L'acqua è ferma, l'aria è ferma, e anche il paese sembra trattenere il fiato.",
   "Sei Stefano, restauratore. Il Comune ti ha chiamato per riportare alla luce un affresco nella chiesa: il martirio di San Sebastiano, dipinto da Buono Legnani, che qui tutti chiamano «il pittore delle agonie». Legnani è morto da anni. Nessuno ne parla volentieri.",
-  "Ieri il tuo amico Antonio, che ti aveva procurato il lavoro, è caduto da una finestra. Dicono che fosse ubriaco. Tu non ci credi."
+  "Ieri il tuo amico Antonio, che ti aveva procurato il lavoro, è caduto dalla finestra del campanile. Dicono che fosse ubriaco. Tu non ci credi.",
+  "Ti svegli nella tua stanza alla locanda dopo un sonno agitato: è già il tardo pomeriggio, e fuori dal paese la nebbia sale dalle valli. Tra le cose di Antonio che l'oste ti ha portato c'è una busta con il tuo nome."
 ];
 
 const AMBIENT = [
@@ -199,37 +201,151 @@ const AMBIENT = [
   "L'odore dell'acqua stagnante ti entra in gola.",
   "Una persiana sbatte. Non c'è vento."
 ];
-const SPOOKY = ["argine","cortile","cantina","corridoio","camera","soffitta"];
+const SPOOKY = ["argine","canneto","cortile","fienile","cantina","corridoio","cucina","camera","soffitta","cimitero","cappella"];
+
+/* Durata della fuga: mosse disponibili dopo aver preso la fotografia. */
+const ALARM_LIMIT = 30;
+/* Mosse in cui il parroco resta fuori dalla sagrestia. */
+const PARROCO_FUORI = 8;
 
 const ROOMS = {
+  /* ------------------------------------------------ PAESE */
   piazza: {
     name: "La piazza",
-    desc: () => "Una piazza di terra battuta, con un pozzo al centro e le case basse tutte intorno, le persiane chiuse. A nord c'è la chiesa, a est la locanda dove alloggi. A sud una strada sterrata scende verso l'argine e le valli." + (F.allarme ? " Il campanile batte un'ora che non esiste." : ""),
-    exits: { n:"chiesa", e:"locanda", s:"argine" },
-    ways: { n:"la chiesa", e:"la locanda, la tua stanza", s:"lo sterrato verso l'argine" },
+    desc: () => "Una piazza di terra battuta, con un pozzo al centro e le case basse tutte intorno, le persiane chiuse. A nord c'è la chiesa, a est la locanda, a ovest l'insegna sbiadita del bar. A sud lo stradone esce dal paese." + (F.allarme ? " Il campanile batte un'ora che non esiste." : ""),
+    exits: { n:"chiesa", e:"sala", o:"bar", s:"stradone" },
+    ways: { n:"la chiesa", e:"la locanda", o:"il bar", s:"lo stradone, fuori dal paese" },
     scenery: {
-      pozzo: { words:["pozzo"], desc:"Guardi giù. L'acqua nera ti rimanda una faccia che, per un istante, ti sembra sorridere." },
-      case: { words:["case","persiane","finestre"], desc:"Dietro le persiane qualcuno si muove. Quando ti giri, si fermano." }
+      pozzo: { words:["pozzo","vera"], desc:"Guardi giù nel pozzo. L'acqua nera ti rimanda una faccia che, per un istante, ti sembra sorridere." },
+      case: { words:["case","persiane","casa"], desc:"Case basse, con le persiane chiuse. Dietro qualcuno si muove. Quando ti giri, si fermano.",
+        apri:"Le persiane sono chiuse dall'interno. Bussi a una: nessuno risponde, ma qualcuno, dietro, smette di respirare." },
+      facciata: { words:["chiesa","facciata","campanile"], desc:() => "La chiesa, a nord, è di mattoni, con un campanile sottile. In cima al campanile c'è la finestra da cui è caduto Antonio." + (F.allarme ? " Adesso il campanile batte ore che non esistono." : "") },
+      insegne: { words:["locanda","bar","insegna","insegne"], desc:"A est l'insegna di ferro della locanda, a ovest quella sbiadita del bar, con la scritta mangiata dal sole.", leggi:"Sulle due insegne si legge a fatica LOCANDA e BAR SPORT." },
+      terra: { prendi:"Non è una cosa che si può prendere.", words:["terra","polvere","piazza"], desc:"Terra battuta, polvere grigia. Nessuno l'ha spazzata da anni." }
     }
   },
-  locanda: {
-    name: "La locanda",
-    desc: () => "La tua stanza alla locanda: un letto di ferro, un comodino, un catino d'acqua. Al muro, accanto alla porta, c'è il telefono a manovella dell'oste, l'unico del paese. Si esce a ovest, sulla piazza.",
-    exits: { o:"piazza" },
-    ways: { o:"torni in piazza" },
+  sala: {
+    name: "La sala della locanda",
+    desc: () => "La sala comune della locanda: tre tavoli, un bancone di legno scuro e un camino spento. Al muro, accanto al bancone, c'è il telefono a manovella, l'unico del paese. Una scala sale alla tua stanza; la porta a ovest dà sulla piazza.",
+    exits: { o:"piazza", su:"stanza" },
+    ways: { o:"la piazza", su:"la scala, la tua stanza" },
     scenery: {
-      telefono: { words:["telefono","apparecchio"], desc:"Un telefono a muro con la manovella. Collega il paese alla caserma dei carabinieri di Comacchio." },
-      letto: { words:["letto","comodino","catino"], desc:"Lenzuola umide. Non hai dormito granché." }
+      telefono: { words:["telefono","apparecchio","manovella","cornetta"], desc:"Un telefono a muro con la manovella e la cornetta appesa a un gancio. Collega il paese alla caserma dei carabinieri di Comacchio. Per usarlo scrivi <em>telefona</em>." },
+      bancone: { words:["bancone","banco","bottiglie"], desc:"Un bancone di legno scuro, consumato dai gomiti. Dietro, poche bottiglie di vino e di grappa." },
+      tavoli: { words:["tavoli","tavolo","sedie","sedia"], desc:"Tre tavoli di legno con le sedie impagliate. Sono vuoti." },
+      camino: { words:["camino","cenere","focolare"], desc:"Un camino spento, pieno di cenere fredda." },
+      scala: { words:["scala","scale","gradini"], desc:"Una scala di legno che sale alla tua stanza." },
+      porta: { words:["porta","uscio"], desc:"La porta della locanda, a ovest, dà sulla piazza.", apri:"La porta è aperta. Fuori, a ovest, c'è la piazza." }
     }
   },
+  stanza: {
+    name: "La tua stanza",
+    desc: () => "La tua stanza alla locanda: un letto di ferro, un comodino, un catino d'acqua su un treppiede. In un angolo c'è la valigia aperta di Antonio, che l'oste ti ha portato ieri sera. Dalla finestra si vede la piazza. La scala scende nella sala.",
+    exits: { giu:"sala" },
+    ways: { giu:"la scala, la sala comune" },
+    scenery: {
+      letto: { words:["letto","lenzuola","materasso","cuscino"], desc:"Un letto di ferro: un materasso sottile, un cuscino schiacciato, lenzuola umide. Non hai dormito granché.", prendi:"Non puoi portarti via il letto." },
+      comodino: { words:["comodino","cassetto"], container:"cassettoStanza", opentxt:"Apri il cassetto del comodino.", 
+        desc:() => F.cassettoStanza ? "Un comodino di legno scuro, con il cassetto aperto. Dentro ci sono una Bibbia e un mozzicone di candela." : "Un comodino di legno scuro, con un cassetto chiuso." },
+      bibbia: { inside:"cassettoStanza", words:["bibbia"], desc:"Una Bibbia con le pagine incollate dall'umidità. Qualcuno ha sottolineato a matita un versetto.",
+        leggi:"Il versetto sottolineato parla del sangue dei giusti, che grida dalla terra. A margine, a matita, qualcuno ha scritto un anno: 1944.",
+        apri:"Le pagine sono incollate dall'umidità. Si apre solo dove qualcuno ha sottolineato un versetto.",
+        prendi:"La Bibbia è dell'oste. La lasci nel cassetto." },
+      mozzicone: { inside:"cassettoStanza", words:["mozzicone","candela","moccolo"], desc:"Un mozzicone di candela, lungo due dita.",
+        prendi:"Un mozzicone così corto non ti serve: hai già la torcia.", accendi:"Non hai fiammiferi. E comunque hai già la torcia." },
+      catino: { words:["catino","acqua","bacinella","treppiede"], desc:"Un catino di smalto sbeccato su un treppiede, pieno d'acqua fredda. Sul fondo, la tua faccia stanca." },
+      valigia: { words:["valigia","bagagli"], desc:"La valigia di Antonio, di cartone pressato, aperta. L'oste ci ha messo dentro le sue cose; quello che non ci stava l'ha appoggiato accanto.",
+        apri:"La valigia è già aperta. Dentro restano solo due camicie piegate.", prendi:"Non ti serve portarti dietro la valigia." },
+      camicie: { prendi:"Le camicie di Antonio. Le lasci nella valigia.", words:["camicie","camicia","vestiti"], desc:"Due camicie di Antonio, piegate con cura. Odorano ancora del suo tabacco." },
+      finestra: { words:["finestra","vetri","vetro"], desc:"Dalla finestra si vede la piazza deserta e, oltre i tetti, il campanile.", apri:"Apri la finestra. Entra l'odore dell'acqua stagnante delle valli. La richiudi." },
+      porta: { words:["porta","uscio"], desc:"La porta della stanza, che dà sulla scala.", apri:"La porta è socchiusa. La scala scende nella sala." },
+      muro: { words:["muro","muri","parete","pareti","intonaco"], desc:"Un muro scrostato, con l'intonaco gonfio di umidità. Sopra il letto è appeso un crocifisso storto." },
+      crocifisso: { prendi:"Il crocifisso è dell'oste. Lo lasci al chiodo.", words:["crocifisso","croce"], desc:"Un crocifisso di legno, storto sul chiodo. Lo raddrizzi. Torna storto." }
+    }
+  },
+  bar: {
+    name: "Il bar",
+    desc: () => "Il Bar Sport: un locale stretto, con un bancone di zinco e quattro tavolini. A uno, due vecchi giocano a carte senza parlare. Dietro il bancone c'è il barista. La porta a est dà sulla piazza.",
+    exits: { e:"piazza" },
+    ways: { e:"la piazza" },
+    scenery: {
+      bancone: { words:["bancone","banco","zinco","bottiglie"], desc:"Un bancone di zinco, appiccicoso. Dietro, bottiglie di vermut e di grappa, e una fila di pacchetti di sigarette. Per comprarne scrivi <em>compra sigarette</em>." },
+      tavolini: { words:["tavolini","tavolino","sedie"], desc:"Quattro tavolini di ferro. Solo uno è occupato." },
+      vecchi: { prendi:"Non ti sembra il caso.", words:["vecchi","vecchio","giocatori","carte"], desc:"Due vecchi giocano a briscola. Non alzano gli occhi dalle carte, ma ascoltano tutto.",
+        parla:"Chiedi qualcosa ai due vecchi. Uno posa una carta e dice soltanto: «Briscola». L'altro sorride, senza denti." },
+      pacchetti: { words:["sigarette","pacchetti","pacchetto","nazionali"], desc:"Pacchetti di Nazionali, in fila dietro il bancone. Per comprarne scrivi <em>compra sigarette</em>.", prendi:"Non sono tue. Se ti servono, puoi <em>comprare</em> un pacchetto." }
+    }
+  },
+  stradone: {
+    name: "Lo stradone",
+    desc: () => "Lo stradone esce dal paese tra due filari di pioppi. A ovest c'è il municipio, con la bandiera arrotolata sull'asta; a est la scuola, una casetta bianca. A nord torni in piazza; a sud la strada scende verso l'argine e le valli.",
+    exits: { n:"piazza", o:"municipio", e:"scuola", s:"argine" },
+    ways: { n:"la piazza", o:"il municipio", e:"la scuola", s:"l'argine e le valli" },
+    scenery: {
+      pioppi: { words:["pioppi","pioppo","alberi","filari"], desc:"Pioppi alti, con le foglie che tremano anche senza vento." },
+      strada: { prendi:"Non è una cosa che si può prendere.", words:["strada","stradone","polvere"], desc:"Una strada bianca di polvere, solcata dalle ruote dei carri." },
+      municipio: { words:["municipio","comune","bandiera"], desc:"Il municipio: due piani, una bandiera arrotolata sull'asta. È a ovest." },
+      scuola: { words:["scuola","casetta"], desc:"La scuola: una casetta bianca con una sola aula. È a est." }
+    }
+  },
+  municipio: {
+    name: "Il municipio",
+    desc: () => "L'ufficio del municipio: una scrivania coperta di timbri, un ritratto del Presidente e una stufa spenta. Dietro la scrivania c'è il segretario comunale. Una scala, a lato, sale all'archivio. La porta a est dà sullo stradone.",
+    exits: { e:"stradone", su:"archivio" },
+    ways: { e:"lo stradone", su:() => F.permesso ? "la scala dell'archivio" : "la scala dell'archivio, sorvegliata" },
+    guard: { su: () => F.permesso ? null : "Il segretario si alza e ti sbarra la scala: «L'archivio non è per i forestieri. Se il Comune l'ha incaricata davvero, avrà un documento.»" },
+    scenery: {
+      scrivania: { words:["scrivania","timbri","timbro","carte"], desc:"Una scrivania coperta di timbri, carte bollate e un calamaio rovesciato.", apri:"Il segretario ti guarda storto. Non è la tua scrivania." },
+      ritratto: { words:["ritratto","presidente","quadro"], desc:"Il ritratto ufficiale del Presidente della Repubblica, un po' storto.", leggi:"Sotto il ritratto, una targhetta: «Il Presidente della Repubblica».", prendi:"Il segretario ti fulmina con lo sguardo. Lo lasci al muro." },
+      stufa: { words:["stufa"], desc:"Una stufa di ghisa, spenta da mesi." },
+      scala: { words:["scala","scale","gradini"], desc:"Una scala stretta che sale all'archivio." }
+    }
+  },
+  archivio: {
+    name: "L'archivio comunale",
+    desc: () => "Una stanza sotto il tetto, piena di scaffali e di faldoni impolverati. Su un tavolo c'è un fascicolo legato con lo spago: qualcuno l'ha consultato di recente. La scala scende all'ufficio.",
+    exits: { giu:"municipio" },
+    ways: { giu:"la scala, l'ufficio" },
+    scenery: {
+      scaffali: { words:["scaffali","scaffale","faldoni","faldone","polvere"], desc:"Scaffali carichi di faldoni: nascite, morti, catasto. La polvere è spessa un dito, tranne che in un punto." },
+      fascicolo: { words:["fascicolo","spago","documenti","atti"], desc:"Un fascicolo legato con lo spago. Sulla copertina c'è scritto: «Famiglia Legnani». Sulla polvere del tavolo, intorno, ci sono le impronte di qualcuno che l'ha già sfogliato: Antonio, probabilmente.",
+        leggi:() => { award("fascicolo"); return "Sfogli il fascicolo. Buono Legnani, pittore: morto nel 1944, «per sua mano». Le sorelle, Gemma e Clelia, invece, non hanno un atto di morte: risultano «trasferite», senza indicare dove. In fondo c'è la mappa del catasto: il podere Legnani è oltre l'argine, a sud, dopo il canneto. Una casa isolata."; },
+        apri:() => doRead(["fascicolo"]), prendi:"Il segretario se ne accorgerebbe. Lo lasci sul tavolo, ma ricordi cosa c'è scritto." },
+      tavolo: { words:["tavolo"], desc:"Un tavolo di legno con sopra un fascicolo legato con lo spago." },
+      finestra: { words:["finestra","abbaino"], desc:"Da un abbaino si vede la pianura che scolora nella nebbia della sera: i tetti del paese, l'argine, il canneto e, laggiù, la sagoma di una casa isolata." }
+    }
+  },
+  scuola: {
+    name: "La scuola",
+    desc: () => "L'unica aula della scuola: banchi di legno, una stufa, una carta geografica appesa al muro e una lavagna con qualcosa scritto col gesso. Alla cattedra c'è la maestra, che corregge quaderni. La porta a ovest dà sullo stradone.",
+    exits: { o:"stradone" },
+    ways: { o:"lo stradone" },
+    scenery: {
+      lavagna: { words:["lavagna","gesso","scritta","filastrocca"], desc:"Sulla lavagna, con la grafia rotonda di un bambino, c'è una filastrocca.",
+        leggi:"Sulla lavagna c'è scritto: «Una finestra ride, l'altra sta a guardare. Chi passa dal canneto non torna a raccontare.» La maestra dice che i bambini la cantano da sempre, e nessuno sa chi l'ha inventata." },
+      banchi: { words:["banchi","banco","calamai"], desc:"Banchi di legno con il calamaio incastrato. Su uno qualcuno ha inciso due bocche che ridono." },
+      carta: { words:["carta","mappa","cartina"], desc:"Una carta geografica della provincia di Ferrara, sbiadita. Qualcuno ha cerchiato a matita il paese e, poco più a sud, un puntino nelle valli.",
+        leggi:"Accanto al puntino cerchiato, nelle valli a sud del paese, qualcuno ha scritto a matita una sola parola: «casa».", prendi:"La carta è della scuola. La lasci appesa." },
+      cattedra: { words:["cattedra","quaderni"], desc:"La cattedra della maestra, con una pila di quaderni da correggere.", apri:"Il cassetto della cattedra è della maestra. Non ti sembra il caso." },
+      stufa: { words:["stufa"], desc:"Una stufa di terracotta, tiepida." }
+    }
+  },
+  /* ------------------------------------------------ CHIESA */
   chiesa: {
     name: "La chiesa",
-    desc: () => "Navata stretta, banchi consumati, odore di cera e di umidità. Sulla parete di fondo un'impalcatura di legno sale fino all'affresco di San Sebastiano, ancora coperto da uno strato di sporco e calce. A est una porticina dà sulla sagrestia; a sud si torna in piazza.",
-    exits: { s:"piazza", su:"impalcatura", e:"sagrestia" },
-    ways: { s:"torni in piazza", su:"l'impalcatura e l'affresco", e:"una porticina dà sulla sagrestia" },
+    desc: () => "Navata stretta, banchi consumati, odore di cera e di umidità. Sulla parete di fondo un'impalcatura di legno sale fino all'affresco di San Sebastiano" + (F.affrescoPulito ? ", ora ripulito." : ", ancora coperto da uno strato di sporco e calce.") + " A est una porticina dà sulla sagrestia; a nord una porta laterale dà sul cimitero; a sud si torna in piazza." + (F.parrocoFuori ? " Il parroco è in piedi davanti all'impalcatura e fissa l'affresco." : ""),
+    exits: { s:"piazza", su:"impalcatura", e:"sagrestia", n:"cimitero" },
+    ways: { s:"la piazza", su:"l'impalcatura e l'affresco", e:"una porticina dà sulla sagrestia", n:"la porta laterale, il cimitero" },
     scenery: {
-      affresco: { words:["affresco","sebastiano","santo","dipinto","parete"], desc:() => F.affrescoPulito ? afrescoPulito() : "Da qui si vede poco. Bisognerebbe salire sull'impalcatura." },
-      impalcatura: { words:["impalcatura","scala"], desc:"Assi e tubi legati con il fil di ferro. Regge, più o meno." }
+      banchi: { words:["banchi","banco","navata"], desc:"Lungo la navata, banchi di legno consumati da generazioni di ginocchia. In fondo, sull'altare, due candele spente.", prendi:"Non puoi portarti via un banco di chiesa." },
+      altare: { words:["altare","tovaglia"], desc:"Un altare di marmo con una tovaglia ricamata e due candele spente." },
+      candele: { words:["candele","candelieri","candeliere"], desc:"Due candele spente sull'altare, mezze consumate. La cera è colata fino alla tovaglia.",
+        prendi:"Le candele sono incollate ai candelieri dalla cera colata. Le lasci dove sono.", accendi:"Non hai fiammiferi. La torcia fa luce, ma non accende niente." },
+      cera: { prendi:"Non è una cosa che si può prendere.", words:["cera","odore","umidita","pavimento"], desc:"L'odore della cera si mescola a quello dell'umidità che sale dal pavimento." },
+      affresco: { words:["affresco","sebastiano","santo","dipinto","sporco","calce"], desc:() => F.affrescoPulito ? afrescoPulito() : "Uno strato di sporco e calce copre quasi tutto l'affresco: si intravede solo il santo legato all'albero. Da qui non basta, bisognerebbe salire sull'impalcatura." },
+      impalcatura: { words:["impalcatura","ponteggio"], desc:"Un'impalcatura di assi e tubi legati con il fil di ferro, fino in cima alla parete. Regge, più o meno." },
+      porticina: { words:["porticina"], desc:"Una porticina di legno sul lato destro della navata. Dà sulla sagrestia, a est.", apri:"La porticina non è chiusa a chiave. Si apre sulla sagrestia, a est." },
+      portalat: { words:["porta","laterale"], desc:"Una porta laterale, a nord, socchiusa. Da lì entra la luce grigia del cimitero.", apri:"La porta laterale è socchiusa. Dà sul cimitero, a nord." }
     }
   },
   impalcatura: {
@@ -237,79 +353,211 @@ const ROOMS = {
     desc: () => F.affrescoPulito
       ? "Sei in cima all'impalcatura, a un palmo dall'affresco ripulito. Ora che le figure sono tornate visibili, preferiresti non averle viste. Si scende in chiesa."
       : "Sei in cima all'impalcatura, a un palmo dall'affresco. San Sebastiano è legato a un albero, il corpo trafitto. Ai suoi lati, due figure sono ancora nascoste sotto la calce. Si scende in chiesa.",
-    /* Un'uscita che inizia con "!" non è una stanza ma un'azione:
-       compare sulla croce ed esegue il comando scritto dopo il "!".
-       hideDir: la punta non mostra la direzione e il giocatore non può
-       usarla scrivendo "sud"; si attiva solo dall'etichetta o col comando. */
+    /* Un'uscita che inizia con "!" non è una stanza ma un'azione: compare
+       sulla croce ed esegue il comando scritto dopo il "!". hideDir: la punta
+       non mostra la direzione e non si usa scrivendo la direzione. */
     exits: { giu:"chiesa", s:"!scavalca l'impalcatura" },
     hideDir: { s:true },
     ways: { giu:"scendi dalla scala, nella navata", s:"scavalca l'impalcatura" },
     scenery: {
-      parapetto: { words:["parapetto","tubo","assi","asse","ringhiera"], desc:"Un tubo di ferro all'altezza della vita, legato alle assi con il fil di ferro." },
-      affresco: { words:["affresco","sebastiano","santo","dipinto","figure","figura","calce"],
+      parapetto: { words:["parapetto","tubo","tubi","ringhiera","assi","asse"], desc:"Un parapetto: un tubo di ferro all'altezza della vita, legato alle assi con il fil di ferro." },
+      albero: { words:["albero","frecce","freccia","corpo","ferite"], desc:"San Sebastiano è legato a un albero, il corpo trafitto dalle frecce. Il pittore ha dipinto ogni ferita con una cura che mette i brividi." },
+      affresco: { words:["affresco","sebastiano","santo","dipinto","figure","figura","calce","sagome"],
         desc:() => F.affrescoPulito ? afrescoPulito() : "Sotto la calce si intuiscono due sagome, una per lato del santo. Con gli attrezzi giusti potresti <em>pulire</em> l'affresco." }
     }
   },
   sagrestia: {
     name: "La sagrestia",
-    desc: () => "Un armadio per i paramenti, un inginocchiatoio, uno scrittoio con sopra un grosso registro rilegato in pelle. " + (F.allarme ? "" : "Il parroco è seduto allo scrittoio e alza gli occhi quando entri. Ha mani piccole e una voce dolce, troppo dolce. ") + "La porticina a ovest torna in chiesa.",
+    desc: () => "Un armadio per i paramenti, un inginocchiatoio con un cuscino di velluto, uno scrittoio con sopra un grosso registro rilegato in pelle. La porticina a ovest torna in chiesa.",
     exits: { o:"chiesa" },
     ways: { o:"la porticina torna in chiesa" },
     scenery: {
-      parroco: { words:["parroco","prete","don","sacerdote"], desc:"Un uomo minuto, senza età, con la tonaca abbottonata fino al collo. Ti guarda senza sbattere le palpebre.",
-        parla:() => "«Il Legnani era un'anima tormentata, figliolo», dice il parroco. «Certe cose si dipingono per dimenticarle. Lei faccia il suo lavoro e non scavi più del necessario.» Poi sorride. Non ti piace quel sorriso." },
-      armadio: { words:["armadio","paramenti"], desc:"Tonache, stole, una cotta ingiallita. In fondo, un paio di scarpe da donna, nere, con il tacco basso." }
+      armadio: { words:["armadio","ante"], container:"armadioAperto", opentxt:"Apri le ante dell'armadio.", 
+        lock:() => parrocoQui() ? "«Cerca qualcosa, figliolo?», chiede il parroco con la sua voce dolce. Lasci stare l'armadio." : null,
+        desc:() => F.armadioAperto ? "Un armadio alto, di noce scuro, con le ante aperte. Dentro ci sono tonache, stole, una cotta ingiallita e, in fondo, un paio di scarpe da donna." : "Un armadio alto, di noce scuro, con le ante chiuse." },
+      tonache: { inside:"armadioAperto", words:["tonache","paramenti","stole","stola","cotta"], desc:"Tonache nere, stole viola e bianche, una cotta di pizzo ingiallita. Sono tutte piccole, cucite su misura per qualcuno di minuto.", prendi:"Sono i paramenti della parrocchia. Li lasci al loro posto." },
+      scarpe: { inside:"armadioAperto", words:["scarpe","scarpa","tacco"], desc:"Un paio di scarpe da donna, nere, con il tacco basso. Sono piccole, e sulle suole c'è fango secco delle valli. Cosa ci fanno nell'armadio di un prete?", prendi:"Le rimetti al loro posto. Meglio che nessuno si accorga che le hai viste." },
+      scrittoio: { words:["scrittoio","scrivania","serratura"], container:"scrittoioAperto",
+        lock:() => parrocoQui() ? "Il parroco alza gli occhi: «Le serve qualcosa, figliolo?» Lasci stare lo scrittoio." : !has("chiavetta") ? "Il cassetto dello scrittoio è chiuso a chiave. Ci vuole una chiave piccola." : null,
+        onOpen:() => { if (I.chiave.loc === null) I.chiave.loc = "sagrestia"; award("scrittoio"); return "Infili la chiavetta d'ottone nella serratura. Il cassetto si apre senza un rumore."; },
+        desc:() => F.scrittoioAperto ? "Uno scrittoio con il cassetto aperto." + (I.chiave.loc==="sagrestia" ? " Dentro ci sono una chiave di ferro e un biglietto piegato." : " Dentro c'è un biglietto piegato.") : "Uno scrittoio pieno di carte, con sopra il grosso registro. Il cassetto ha una piccola serratura." },
+      biglietto: { inside:"scrittoioAperto", words:["biglietto","foglio","messaggio"], desc:"Un biglietto piegato in quattro, scritto con una grafia tremante ma decisa: la mano di una persona anziana.",
+        leggi:() => { award("biglietto"); return "«Sorella mia, il forestiero sta ripulendo l'affresco. Se viene alla casa, ci penso io. Come con l'altro. — G.» Chi scrive al parroco chiamandolo «sorella mia»? E «l'altro», con Antonio morto ieri, non può che essere lui."; },
+        prendi:"Se sparisse, se ne accorgerebbero. Lo lasci dov'è, ma ricordi ogni parola." },
+      inginocchiatoio: { words:["inginocchiatoio","cuscino","velluto"],
+        desc:() => I.chiavetta.loc==="sagrestia" ? "Un inginocchiatoio con un cuscino di velluto consumato. Sotto il cuscino, nascosta, c'è una piccola chiave d'ottone." : "Un inginocchiatoio con un cuscino di velluto consumato in due punti, dove poggiano le ginocchia. Qualcuno ci passa molte ore.",
+        onExamine:() => {
+          if (F.chiavettaVista) return null;
+          if (parrocoQui()) return "Un inginocchiatoio con un cuscino di velluto consumato. Il parroco ti osserva: non è il momento di frugare.";
+          F.chiavettaVista = true; I.chiavetta.loc = "sagrestia";
+          return "Sollevi il cuscino di velluto dell'inginocchiatoio. Sotto, nascosta, c'è una piccola chiave d'ottone." + (F.quadernoDato ? " Dove si inginocchia, aveva scritto Antonio." : ""); },
+        apri:() => doExamine(["inginocchiatoio"]) },
+      registroSc: { prendi:"Sono carte della parrocchia. Le lasci sullo scrittoio.", words:["carte"], desc:"Carte della parrocchia: battesimi, matrimoni, offerte." },
+      porticina: { words:["porticina","porta"], desc:"La porticina che torna in chiesa, a ovest.", apri:"La porticina è aperta. Dà sulla chiesa, a ovest." }
     }
   },
+  cimitero: {
+    name: "Il cimitero",
+    desc: () => "Un piccolo cimitero dietro la chiesa, chiuso da un muro basso. Croci di ferro, lapidi storte, due cipressi. In fondo, a est, c'è la cappella di famiglia dei Legnani, chiusa da un cancello" + (F.cancelloAperto ? ", ora aperto." : " di ferro con una serratura antica.") + " La porta laterale, a sud, torna in chiesa.",
+    exits: { s:"chiesa", e:"cappella" },
+    ways: { s:"la chiesa", e:() => F.cancelloAperto ? "la cappella dei Legnani" : "la cappella dei Legnani, chiusa" },
+    guard: { e: () => F.cancelloAperto ? null : "Il cancello della cappella è chiuso a chiave: una serratura antica, di ferro." },
+    scenery: {
+      croci: { words:["croci","croce","lapidi","lapide","tombe","tomba"], desc:"Croci di ferro e lapidi storte, con nomi che si ripetono: le stesse quattro famiglie da secoli.",
+        leggi:"Leggi qualche nome sulle lapidi: Bellini, Rossi, Gardini, Fabbri, e di nuovo Bellini. Le stesse famiglie da secoli. Nessun Legnani: loro sono nella cappella, in fondo.", prendi:"Non è una cosa che puoi portare via." },
+      cipressi: { words:["cipressi","cipresso"], desc:"Due cipressi neri, immobili." },
+      muro: { words:["muro","muretto"], desc:"Un muro basso, coperto di muschio." },
+      cancello: { words:["cancello","serratura","sbarre"], desc:() => F.cancelloAperto ? "Il cancello della cappella è aperto." : "Un cancello di ferro battuto, con una serratura antica, grande come una mano. Le sbarre sono lucide dove qualcuno le tocca spesso.",
+        apri:() => apriCancello(), forza:"Il ferro è robusto e la serratura tiene: senza la sua chiave non si apre." },
+      cappellaSc: { words:["cappella","legnani"], desc:"La cappella dei Legnani: un piccolo edificio di marmo grigio, con il nome della famiglia inciso sull'architrave. Davanti al cancello ci sono fiori freschi." },
+      fiori: { prendi:"Sono fiori per i morti. Li lasci dove sono.", words:["fiori","fiore"], desc:"Crisantemi bianchi, freschi, messi da poco davanti alla cappella dei Legnani. Per chi, se sono tutti morti?" }
+    }
+  },
+  cappella: {
+    name: "La cappella dei Legnani",
+    dark: true,
+    darkDesc: "Buio. Odore di marmo freddo e di fiori marci. Il cancello è a ovest.",
+    desc: () => "Una cappella piccola e fredda. Sulla parete ci sono tre loculi: quello di Buono Legnani e, accanto, quelli delle due sorelle, chiusi da una lapide sola. Su un altarino, una foto ovale sbiadita. Il cancello è a ovest.",
+    exits: { o:"cimitero" },
+    ways: { o:"il cancello, il cimitero" },
+    scenery: {
+      lapideB: { words:["buono","pittore"], desc:"Il loculo di Buono Legnani. Sul marmo: «Buono Legnani, pittore. 1902 – 1944.» Sotto, un verso: «Dipinse il dolore per non sentirlo.»",
+        leggi:"«Buono Legnani, pittore. 1902 – 1944. Dipinse il dolore per non sentirlo.»", prendi:"Non è una cosa che puoi portare via." },
+      lapideS: { words:["lapide","sorelle","loculi","loculo","marmo"], desc:() => F.lapideAperta ? "La lapide delle sorelle è smossa. Dietro, i loculi sono vuoti: nessuna bara, nessun corpo. Solo polvere." + (I.taccuino.loc==="cappella" ? " E, appoggiato in fondo, un taccuino." : "") : "Una lapide sola per le due sorelle Legnani, con i nomi e una data: 1944. Il marmo è stato smosso e rimesso a posto: lungo i bordi la malta è fresca.",
+        apri:() => forzaLapide(), forza:() => forzaLapide(),
+        leggi:"Sulla lapide delle sorelle ci sono due nomi, «Gemma e Clelia Legnani», e una sola data: 1944. Nessuna data di nascita. Nessun «riposa in pace».", prendi:"Non è una cosa che puoi portare via." },
+      altarino: { words:["altarino","foto","ovale"], desc:"Su un altarino, la foto ovale di un uomo magro con i baffi: Buono Legnani. Ha lo sguardo di chi non dorme da anni.",
+        leggi:"Sotto la foto ovale c'è una targhetta d'ottone: «Al fratello, che ci ha insegnato a guardare.»", prendi:"La foto è murata nell'altarino." }
+    }
+  },
+  /* ------------------------------------------------ VALLI */
   argine: {
     name: "L'argine",
     dark: true,
-    darkDesc: "La nebbia è così fitta che non vedi le tue mani. Senti l'acqua scorrere da qualche parte, vicinissima. La strada per tornare in paese è a nord.",
-    desc: () => "Il fascio della torcia scava un tunnel nella nebbia. L'argine corre dritto tra due specchi d'acqua immobili. Una barca da pesca, mezza affondata, è tirata in secca sul bordo. A sud, oltre il canneto, si indovina la sagoma di una casa isolata. A nord torni in paese.",
-    exits: { n:"piazza", s:"cortile" },
-    ways: { n:"torni in paese", s:"la casa oltre il canneto" },
+    darkDesc: "Fuori dal paese è già quasi buio, e la nebbia è così fitta che non vedi le tue mani. Senti l'acqua scorrere da qualche parte, vicinissima. Lo stradone, per tornare in paese, è a nord.",
+    desc: () => "Il fascio della torcia scava un tunnel nella nebbia. L'argine corre dritto tra due specchi d'acqua immobili. Una barca da pesca, mezza affondata, è tirata in secca sul bordo. A est, su palafitte, c'è il capanno di un pescatore; a sud comincia il canneto. A nord torni sullo stradone.",
+    exits: { n:"stradone", e:"capanno", s:"canneto" },
+    ways: { n:"lo stradone, verso il paese", e:"il capanno del pescatore", s:"il canneto" },
     guard: { s: () => haveLight() ? null : "Fai qualche passo nella nebbia, il piede affonda nel fango e per poco non finisci nel canale. Senza luce non vai da nessuna parte." },
     scenery: {
-      barca: { words:["barca","scafo"], desc:"Una barca da pesca piena d'acqua piovana e di foglie marce." },
-      canale: { words:["canale","acqua","valli","canneto"], desc:"Acqua nera e ferma. Una volta, di notte, ci hanno ripescato un uomo. Così dicono." }
+      barca: { words:["barca","scafo"], desc:() => I.piede.loc==="argine" ? "Una barca da pesca piena d'acqua piovana e di foglie marce. In fondo, tra le foglie, spunta un ferro." : "Una barca da pesca piena d'acqua piovana e di foglie marce." },
+      canale: { words:["canale","acqua","valli","specchi"], desc:"Acqua nera e ferma. Una volta, di notte, ci hanno ripescato un uomo. Così dicono." },
+      nebbia: { prendi:"Non è una cosa che si può prendere.", words:["nebbia","foschia"], desc:"Una nebbia bianca e fitta, che si muove piano sopra l'acqua. A tratti sembra prendere forma." },
+      fango: { prendi:"Non è una cosa che si può prendere.", words:["fango","argine","sentiero"], desc:"L'argine è uno stretto sentiero di fango tra due specchi d'acqua. Un passo falso e sei nel canale." },
+      capannoSc: { words:["capanno","palafitte"], desc:"Un capanno di legno su palafitte, a est. Dalla finestrella esce un filo di fumo." }
     }
   },
+  capanno: {
+    name: "Il capanno del pescatore",
+    desc: () => "Un capanno di legno che sa di fumo e di anguilla. Reti appese ad asciugare, una stufetta accesa, una branda. Il pescatore, seduto su una cassetta, ripara una rete. La porta a ovest torna sull'argine.",
+    exits: { o:"argine" },
+    ways: { o:"l'argine" },
+    scenery: {
+      reti: { prendi:"Le reti sono del pescatore.", words:["reti","rete"], desc:"Reti da pesca appese ad asciugare, rattoppate cento volte." },
+      stufetta: { words:["stufetta","stufa","fuoco","fumo"], desc:"Una stufetta di ghisa, accesa. Sopra, in una padella, frigge qualcosa." },
+      anguille: { words:["anguille","anguilla","padella"], desc:"Anguille che friggono in padella. L'odore riempie il capanno.", prendi:"Il pescatore ti guarda. «Quelle sono la mia cena.»" },
+      branda: { words:["branda","coperta"], desc:"Una branda militare con una coperta grigia." }
+    }
+  },
+  canneto: {
+    name: "Il canneto",
+    dark: true,
+    darkDesc: "Canne alte intorno a te, nel buio. Frusciano da tutte le parti. L'argine dovrebbe essere a nord.",
+    desc: () => "Canne alte due metri da tutte le parti, che frusciano anche quando non c'è vento. Il terreno è molle." + (F.sentiero ? " Riconosci il sentiero delle canne spezzate, che va verso sud." : " Ogni direzione sembra uguale all'altra, anche se verso sud le canne sono più fitte.") + " L'argine è a nord.",
+    exits: { n:"argine", s:"cortile" },
+    ways: { n:"l'argine", s:() => F.sentiero ? "il sentiero delle canne spezzate" : "dove frusciano le canne" },
+    guard: { s: () => !haveLight() ? "Al buio, tra le canne, non sai da che parte andare." : F.sentiero ? null : "Ti addentri tra le canne. Dopo un po' ti accorgi di essere passato due volte accanto alla stessa canna storta. Torni indietro, al punto di partenza. Da solo, qui, ti perdi." },
+    scenery: {
+      canne: { words:["canne","canna","canneto","spezzate"], desc:() => F.sentiero ? "Le canne spezzate segnano un sentiero verso sud." : "Canne alte due metri, tutte uguali. Ma alcune sono spezzate allo stesso modo, all'altezza di un uomo.",
+        onExamine:() => { if (F.sentiero) return null; F.sentiero = true; award("sentiero"); return "Guardi meglio. Alcune canne sono spezzate allo stesso modo, all'altezza di un uomo: qualcuno passa spesso di qui. Seguendole, si va verso sud."; } },
+      terreno: { prendi:"Non è una cosa che si può prendere.", words:["terreno","fango"], desc:"Fango molle, che succhia le scarpe. Ci sono orme piccole." },
+      orme: { prendi:"Non è una cosa che si può prendere.", words:["orme","impronte"], desc:"Orme di scarpe piccole, da donna, con il tacco basso. Vanno verso sud." }
+    }
+  },
+  /* ------------------------------------------------ LA CASA */
   cortile: {
     name: "Il cortile della casa",
-    desc: () => "Davanti a te c'è la casa. È vecchia, scrostata, e le sue finestre sono state dipinte con delle bocche: labbra rosse, denti bianchi, tutte spalancate in una risata muta. La porta d'ingresso è chiusa da una catena. In basso, a filo del terreno, c'è la grata di una cantina" + (F.grataAperta ? ", ora divelta: puoi scendere." : ".") + " L'argine è a nord.",
-    exits: { n:"argine", giu:"cantina" },
-    ways: { n:"l'argine nella nebbia", giu:() => F.grataAperta ? "la grata divelta, la cantina" : "la grata della cantina, chiusa" },
+    desc: () => "Davanti a te c'è la casa. È vecchia, scrostata, e sui vetri delle sue finestre sono state dipinte delle bocche: labbra rosse, denti bianchi, tutte spalancate in una risata muta. La porta d'ingresso è chiusa da una catena. A est c'è un fienile. In basso, a filo del terreno, c'è la grata di una cantina" + (F.grataAperta ? ", ora divelta: puoi scendere." : ".") + " Il canneto è a nord.",
+    exits: { n:"canneto", e:"fienile", giu:"cantina" },
+    ways: { n:"il canneto", e:"il fienile", giu:() => F.grataAperta ? "la grata divelta, la cantina" : "la grata della cantina, chiusa" },
     guard: { giu: () => F.grataAperta ? null : "La grata è chiusa e arrugginita nei cardini. A mani nude non si muove." },
     scenery: {
-      finestre: { words:["finestre","finestra","bocche","bocca","casa","risata"], desc:"Da vicino vedi che la vernice delle bocche è stata ripassata di recente. Qualcuno, in quella casa, si prende ancora cura del sorriso." },
-      catena: { words:["catena","porta","lucchetto","ingresso"], desc:"Una catena grossa come un polso, con un lucchetto nuovo. Non è una porta che si apre da fuori.",
-        apri:() => has("piede") ? "Provi a fare leva sulla catena con il piede di porco. Il lucchetto è nuovo e non cede di un millimetro. Meglio cercare un'altra via." : "La catena è grossa come un polso e il lucchetto è nuovo. Da qui non si entra." },
-      grata: { words:["grata","inferriata","cantina"], desc:() => F.grataAperta ? "La grata è divelta. Sotto, il buio." : "Una grata di ferro sopra una finestrella della cantina. I cardini sono marci: con una leva forse cederebbero.",
-        apri:() => forzaGrata() }
+      finestre: { words:["finestre","finestra","bocche","bocca","risata","labbra","denti","casa"], desc:"Da vicino vedi che la vernice delle bocche è stata ripassata di recente. Qualcuno, in quella casa, si prende ancora cura del sorriso.",
+        apri:"Le finestre sono chiuse e inchiodate dall'interno. Le bocche dipinte sui vetri ti ridono in faccia." },
+      catena: { words:["catena","porta","lucchetto","ingresso"], desc:"Una catena grossa come un polso, con un lucchetto nuovo. Chi abita qui ne ha la chiave. Tu no.",
+        apri:() => has("piede") ? "Provi a fare leva sulla catena con il piede di porco. Il lucchetto è nuovo e non cede di un millimetro. Meglio cercare un'altra via." : "La catena è grossa come un polso e il lucchetto è nuovo. Da qui non si entra.",
+        forza:() => has("piede") ? "Il lucchetto è nuovo e la catena è grossa come un polso. Non cede. Meglio cercare un'altra via." : "A mani nude? No." },
+      grata: { words:["grata","inferriata","cantina","cardini"], desc:() => F.grataAperta ? "La grata è divelta. Sotto, il buio." : "Una grata di ferro sopra una finestrella della cantina. I cardini sono marci: con una leva forse cederebbero.",
+        apri:() => forzaGrata(), forza:() => forzaGrata() },
+      terreno: { prendi:"Non è una cosa che si può prendere.", words:["terreno","cortile","erba","fango"], desc:"Erba alta e fango. Qualcuno ci è passato di recente: ci sono impronte di scarpe piccole." },
+      impronte: { prendi:"Non è una cosa che si può prendere.", words:["impronte","impronta","orme"], desc:"Impronte di scarpe piccole, da donna, con il tacco basso. Vanno dalla porta incatenata verso il canneto, e tornano." },
+      fienileSc: { words:["fienile"], desc:"Un fienile di mattoni, a est, con il portone aperto." }
+    }
+  },
+  fienile: {
+    name: "Il fienile",
+    desc: () => "Un fienile di mattoni, mezzo vuoto. Balle di fieno marcio, una carriola, una falce appesa a un chiodo e una scala a pioli appoggiata alla parete. Il cortile è a ovest.",
+    exits: { o:"cortile" },
+    ways: { o:"il cortile" },
+    scenery: {
+      fieno: { words:["fieno","balle","balla"], desc:"Balle di fieno marcio. Sotto una, spunta una scarpa da uomo, vecchia di anni.", cerca:"Frughi nel fieno. Trovi solo una scarpa da uomo, vecchia di anni, e la lasci dov'è." },
+      scarpa: { words:["scarpa","scarpone"], desc:"Una scarpa da uomo, vecchia, con la suola consumata. Di chi era? Non lo vuoi sapere.", prendi:"Non la tocchi." },
+      carriola: { words:["carriola"], desc:"Una carriola di legno. Il fondo è macchiato di scuro, una macchia vecchia, che non va via." },
+      falce: { words:["falce","chiodo"], desc:"Una falce arrugginita, appesa a un chiodo. La lama è stata affilata di recente.", prendi:"Non ti serve una falce. E non ti piace l'idea di tenerla in mano qui." },
+      scala: { words:["scala","pioli"], desc:"Una scala a pioli appoggiata alla parete, con due pioli rotti.", prendi:"È lunga e pesante, e ha due pioli rotti. La lasci dov'è." }
     }
   },
   cantina: {
     name: "La cantina",
     dark: true,
     darkDesc: "Buio. Odore di terra bagnata e di qualcos'altro, dolciastro, che preferisci non riconoscere.",
-    desc: () => "Una cantina dal soffitto basso. Damigiane vuote, sacchi di calce, barattoli di colore secco allineati su uno scaffale. Su un tavolo c'è un vecchio grammofono senza tromba. Una scala di pietra sale verso la casa; la grata da cui sei entrato è in alto.",
+    desc: () => "Una cantina dal soffitto basso. Damigiane vuote, sacchi di calce, barattoli di colore secco allineati su uno scaffale. Su un tavolo c'è un vecchio grammofono senza tromba. Una scala di pietra sale verso la casa; la finestrella da cui sei entrato è in alto, a nord.",
     exits: { su:"corridoio", n:"cortile" },
-    ways: { su:"la scala di pietra, la casa", n:"la grata, fuori nel cortile" },
+    ways: { su:"la scala di pietra, la casa", n:"la finestrella, fuori nel cortile" },
     scenery: {
-      colori: { words:["barattoli","colori","colore","scaffale","pigmenti"], desc:"Pigmenti: terra di Siena, ocra, nero d'ossa. Uno dei barattoli è etichettato a mano: «rosso vero». Lo rimetti giù in fretta." },
-      calce: { words:["sacchi","calce","damigiane"], desc:"Sacchi di calce viva, come quelli che si usano per coprire un affresco. O qualcos'altro." },
-      grammofono: { words:["grammofono","tavolo"], desc:"Un grammofono sventrato. Accanto c'era sicuramente altro: ci sono segni di polvere a forma di scatola." }
+      colori: { prendi:"Non vuoi toccare quei barattoli più del necessario.", words:["barattoli","barattolo","colori","colore","scaffale","pigmenti","etichetta"], desc:"Pigmenti: terra di Siena, ocra, nero d'ossa. Uno dei barattoli è etichettato a mano: «rosso vero». Lo rimetti giù in fretta.",
+        leggi:"L'etichetta è scritta a mano, con una grafia elegante: «rosso vero». Sugli altri barattoli c'è solo il nome del colore.",
+        apri:"Sviti il coperchio del barattolo «rosso vero». Dentro c'è una polvere scura, quasi nera, che odora di ferro. Lo richiudi subito." },
+      calce: { words:["sacchi","sacco","calce"], desc:"Sacchi di calce viva, come quelli che si usano per coprire un affresco. O qualcos'altro.",
+        apri:"Apri un sacco. Calce viva, bianca come la neve. Ti brucia gli occhi solo a guardarla. Lo richiudi in fretta." },
+      damigiane: { prendi:"Damigiane vuote: non ti servono.", words:["damigiane","damigiana"], desc:"Damigiane vuote, impagliate. Odorano ancora di vino acido." },
+      grammofono: { prendi:"È rotto e pesante. Non ti serve.", words:["grammofono","tavolo","tromba"], desc:() => I.disco.loc==="cantina" ? "Un grammofono sventrato, senza tromba. Accanto, sul tavolo, c'è una scatola di cartone con dentro un disco." : "Un grammofono sventrato. Accanto, nella polvere del tavolo, resta il segno di una scatola.",
+        apri:"È già aperto: qualcuno l'ha sventrato e ha portato via il meccanismo. Non suonerà più." },
+      scala: { words:["scala","scale","gradini"], desc:"Una scala di pietra, consumata al centro, che sale verso la casa." },
+      finestrella: { words:["grata","finestrella"], desc:"In alto, la finestrella da cui sei entrato. La grata divelta lascia passare un filo d'aria fredda." },
+      soffitto: { prendi:"Non è una cosa che si può prendere.", words:["soffitto","volta","salnitro"], desc:"Un soffitto basso, a volta, coperto di salnitro." }
     }
   },
   corridoio: {
     name: "Il corridoio",
     dark: true,
-    darkDesc: "Buio. Il pavimento scricchiola. Senti un respiro lento venire da destra.",
-    desc: () => "Un corridoio lungo e spoglio. Dall'interno, le bocche dipinte sulle finestre si vedono al contrario: la luce che filtra disegna sul pavimento tante risate rovesciate. A est una porta socchiusa, da cui viene un respiro lento. Una scala ripida sale alla soffitta; un'altra scende in cantina.",
-    exits: { e:"camera", su:"soffitta", giu:"cantina" },
-    ways: { e:"una porta socchiusa, un respiro", su:"la scala ripida della soffitta", giu:"la cantina" },
+    darkDesc: "Buio. Il pavimento scricchiola. Da una porta, a est, viene un respiro lento.",
+    desc: () => "Un corridoio lungo e spoglio. Quando il fascio della torcia passa sulle finestre, le bocche dipinte sui vetri proiettano sul pavimento tante risate rovesciate. A est una porta socchiusa, da cui viene un respiro lento; a ovest la cucina. Una scala ripida sale alla soffitta; un'altra scende in cantina.",
+    exits: { e:"camera", o:"cucina", su:"soffitta", giu:"cantina" },
+    ways: { e:"una porta socchiusa, un respiro", o:"la cucina", su:"la scala ripida della soffitta", giu:"la cantina" },
     scenery: {
-      finestre: { words:["finestre","finestra","bocche","risate"], desc:"Da qui sembrano ghigni. Ti accorgi che sono tutte rivolte verso il paese, verso il campanile." }
+      finestre: { words:["finestre","finestra","bocche","risate"], desc:"Da dentro, le bocche dipinte sui vetri sembrano ghigni. Ti accorgi che le finestre sono tutte rivolte verso il paese, verso il campanile.", apri:"Le finestre sono inchiodate. Non si aprono." },
+      porta: { words:["porta"], desc:"La porta della camera, a est, è socchiusa. Da dentro viene un respiro lento.", apri:"La porta è già socchiusa. Basta andare a est." },
+      scale: { words:["scala","scale","gradini"], desc:"Una scala ripida sale alla soffitta; un'altra, di pietra, scende in cantina." },
+      pavimento: { prendi:"Non è una cosa che si può prendere.", words:["pavimento","luce"], desc:"Sulle assi del pavimento, alla luce della torcia, si allungano le ombre di risate rovesciate. Alcune assi scricchiolano più delle altre." }
+    }
+  },
+  cucina: {
+    name: "La cucina",
+    dark: true,
+    darkDesc: "Buio. Odore di brace e di caffè d'orzo. Il corridoio è a est.",
+    desc: () => "Una cucina con il pavimento di cotto. Nel camino la brace è ancora rossa. Sul tavolo ci sono due tazze; contro il muro, una credenza. Il corridoio è a est.",
+    exits: { e:"corridoio" },
+    ways: { e:"il corridoio" },
+    scenery: {
+      camino: { words:["camino","brace","fuoco","cenere"], desc:"Nel camino, sotto un velo di cenere, la brace è ancora rossa. Qualcuno l'ha acceso da poche ore.", accendi:"La brace è già accesa. Non è il caso di attizzarla e fare fumo." },
+      tavolo: { words:["tavolo"], desc:"Un tavolo di legno con due tazze sopra." },
+      tazze: { words:["tazze","tazza","caffe","orzo"], desc:"Due tazze di caffè d'orzo, ancora tiepide. Su una c'è il segno di un rossetto rosso, lo stesso rosso delle bocche sulle finestre.", prendi:"Se mancasse una tazza, se ne accorgerebbero." },
+      credenza: { words:["credenza","ante","ripiani"], container:"credenzaAperta", opentxt:"Apri le ante della credenza.", 
+        desc:() => F.credenzaAperta ? "Una credenza con le ante aperte: piatti spaiati, un barattolo di zucchero e un coltello da cucina." : "Una credenza di legno, con le ante chiuse." },
+      piatti: { prendi:"Se mancasse qualcosa, se ne accorgerebbero.", inside:"credenzaAperta", words:["piatti","piatto","zucchero","barattolo"], desc:"Piatti spaiati e un barattolo di zucchero. Ci sono piatti per due." },
+      coltello: { inside:"credenzaAperta", words:["coltello","lama"], desc:"Un coltello da cucina, lungo, pulitissimo. Troppo pulito.", prendi:"Lo guardi a lungo. Poi lo rimetti a posto: non sei venuto qui per armarti." },
+      pavimento: { prendi:"Non è una cosa che si può prendere.", words:["pavimento","cotto"], desc:"Un pavimento di cotto, lavato da poco. Negli angoli resta un alone scuro." }
     }
   },
   camera: {
@@ -320,9 +568,17 @@ const ROOMS = {
     exits: { o:"corridoio" },
     ways: { o:"il corridoio" },
     scenery: {
-      vecchia: { words:["vecchia","donna","signora","letto"], desc:"Sembra paralizzata. Non muove un muscolo. Ma gli occhi ti seguono, e quando ti avvicini alla porta, la bocca si piega.",
-        parla:() => "Le parli piano. Lei non risponde. Solo, quando ti volti per andare, senti un fiato che somiglia a una risata." },
-      rosario: { words:["rosario","comodino","bicchiere"], desc:"Il bicchiere è pieno fino all'orlo. Qualcuno l'ha riempito oggi." }
+      vecchia: { words:["vecchia","donna","signora","letto","coperte","occhi","viso"], desc:"Una vecchia minuta, immobile nel letto sotto le coperte, il viso rivolto al soffitto, i capelli bianchi raccolti in una crocchia. Sembra paralizzata: non muove un muscolo. Ma gli occhi ti seguono, e quando ti avvicini alla porta, la bocca si piega.",
+        parla:"Le parli piano. Lei non risponde. Solo, quando ti volti per andare, senti un fiato che somiglia a una risata.", npcLike:true },
+      comodino: { words:["comodino","cassetto"], container:"cassettoCamera", opentxt:"Apri piano il cassetto del comodino, senza far rumore.", 
+        desc:() => "Un comodino accanto al letto, con sopra un rosario e un bicchiere d'acqua." + (F.cassettoCamera ? " Il cassetto è aperto: dentro ci sono forcine per capelli e un ditale." : "") },
+      forcine: { inside:"cassettoCamera", words:["forcine","forcina"], desc:"Forcine nere per capelli, tante, come quelle che servono a tenere su una crocchia. Sono lucide, usate di recente. Ma la vecchia sembra paralizzata: chi le rifà la crocchia?", prendi:"Le lasci dove sono. Meglio non toccare niente in questa stanza." },
+      ditale: { inside:"cassettoCamera", words:["ditale"], desc:"Un ditale d'argento, piccolo, per un dito sottile da bambina. Troppo piccolo per le dita nodose della vecchia: è di qualcuno con le mani piccole.", prendi:"Lo lasci nel cassetto. Meglio non toccare niente in questa stanza." },
+      rosario: { prendi:"Lo lasci dov'è. La vecchia ti guarda.", words:["rosario","grani"], desc:"Un rosario di grani neri, lisci e consumati dall'uso. Chi lo sgrana, se la vecchia non si muove?" },
+      bicchiere: { words:["bicchiere","acqua"], desc:"Il bicchiere è pieno fino all'orlo, l'acqua limpida, cambiata da poco. Qualcuno si occupa di lei.", prendi:"Lo lasci dov'è. Lei ti guarda." },
+      soffitto: { prendi:"Non è una cosa che si può prendere.", words:["soffitto"], desc:"Il soffitto è macchiato d'umido. La vecchia lo fissa senza battere ciglio, come se ci vedesse qualcosa." },
+      canfora: { prendi:"Non è una cosa che si può prendere.", words:["canfora","odore"], desc:"Un odore pesante di canfora, come di vestiti chiusi da anni." },
+      porta: { words:["porta"], desc:"La porta della camera, a ovest, dà sul corridoio." }
     }
   },
   soffitta: {
@@ -331,35 +587,220 @@ const ROOMS = {
     darkDesc: "Buio sotto il tetto. Le travi scricchiolano sopra la tua testa.",
     desc: () => "Lo studio del pittore. Tele girate contro il muro, cavalletti, un materasso. Sui quadri che riesci a vedere ci sono solo agonie: corpi, volti deformati dal dolore, sempre osservati da due donne in disparte. La scala scende al corridoio.",
     exits: { giu:"corridoio" },
-    ways: { giu:"il corridoio, la camera" },
+    ways: { giu:"il corridoio" },
     scenery: {
-      quadri: { words:["quadri","quadro","tele","tela","cavalletti"], desc:"Le due donne compaiono in ogni quadro. Una ha i capelli raccolti. L'altra ha le mani piccole." },
-      materasso: { words:["materasso"], desc:"Un materasso macchiato, con una coperta militare piegata con cura." }
+      quadri: { prendi:"Le tele sono troppo grandi da portare via, e non vuoi averle vicino.", words:["quadri","quadro","tele","tela","donne","corpi","volti","agonie"], desc:"Le due donne compaiono in ogni quadro. Una ha i capelli raccolti. L'altra ha le mani piccole." },
+      cavalletti: { prendi:"Non ti serve un cavalletto.", words:["cavalletti","cavalletto"], desc:"Cavalletti vuoti, incrostati di colore. Su uno è rimasta una tela strappata a metà." },
+      materasso: { prendi:"Non ti serve.", words:["materasso","coperta"], desc:"Un materasso macchiato, con una coperta militare piegata con cura." },
+      muro: { words:["muro","muri","parete","carboncino","retro","scritta"], desc:"Contro il muro, tele girate al rovescio. Sul retro di una c'è scritto a carboncino: «per le mie sorelle».",
+        leggi:"Sul retro della tela, a carboncino, con una grafia nervosa: «per le mie sorelle, che sanno guardare»." },
+      travi: { words:["travi","trave","tetto"], desc:"Travi annerite, a un palmo dalla testa. Ogni tanto scricchiolano, come se qualcuno camminasse sul tetto." },
+      scala: { words:["scala","scale"], desc:"La scala ripida che scende al corridoio." }
     }
   }
 };
 
-/* Stessa morte per "salta" e "scavalca l'impalcatura". */
-const MORTE_IMPALCATURA = "Superi il parapetto dell'impalcatura. Per un istante i banchi sembrano vicini, a portata di salto. Poi la navata ti viene incontro, molto prima di quanto pensassi, con un colpo sordo che rimbomba fino all'altare. Mentre tutto si spegne, l'ultima cosa che vedi è l'affresco sopra di te: San Sebastiano, e le due figure ai suoi lati che sorridono. Come Antonio, anche tu sei caduto dall'alto.";
-
 function afrescoPulito(){
-  return "Ai lati di San Sebastiano ora si vedono le due figure: due donne. Non piangono il santo, lo stanno ferendo, con una calma terribile. Una ha i capelli raccolti. L'altra ha le mani piccole, da bambina.";
+  return "Ai lati di San Sebastiano ora si vedono le due figure: due donne. Non piangono il santo, lo stanno ferendo, con una calma terribile. Una ha i capelli raccolti. L'altra ha le mani piccole, da bambina, e un viso che ti sembra di aver già visto.";
 }
 
+/* L'ordine conta: "chiave" viene prima di "chiavetta", così "prendi chiave"
+   sceglie la chiave della cappella se ci sono tutte e due. */
 const ITEMS = {
-  borsa:     { name:"la borsa da restauratore", words:["borsa","attrezzi","bisturi","solvente","spugna"], loc:"inv", desc:"Bisturi, spugne, solvente, pennelli. Gli attrezzi del mestiere." },
-  busta:     { name:"una busta", words:["busta","lettera","biglietto"], loc:"locanda", desc:"Una busta gialla infilata sotto la porta, con il tuo nome scritto a matita. È la grafia di Antonio.",
-               leggi:() => { award("busta",5); return "«Stefano, se leggi questa vuol dire che ho fatto tardi. Il Legnani non dipingeva di fantasia. Le sorelle lo aiutavano, e forse non sono morte come dicono. Ascolta il nastro. Non fidarti di nessuno, nemmeno di chi porta l'abito. — A.»"; } },
-  nastro:    { name:"una bobina di nastro", words:["nastro","bobina"], loc:"locanda", desc:"Una bobina per registratore, con un'etichetta: «A. — appunti»." },
-  registratore:{ name:"un registratore a bobine", words:["registratore","magnetofono"], loc:"locanda", desc:"Il registratore portatile di Antonio. Pesante, ma funziona." },
-  torcia:    { name:"una torcia elettrica", words:["torcia","pila","lampada"], loc:"locanda", feel:true, desc:() => F.torciaAccesa ? "La torcia è accesa." : "Una torcia elettrica, spenta." },
-  piede:     { name:"un piede di porco", words:["piede","porco","leva","palanchino","ferro"], loc:"argine", desc:"Un piede di porco arrugginito, dimenticato in fondo alla barca." },
-  disco:     { name:"un disco inciso a mano", words:["disco","incisione"], loc:"cantina", desc:"Un disco di cera graffiato a mano, in una scatola di cartone. Sull'etichetta, una sola parola: «Buono».",
-               ascolta:() => { award("disco",10); return "Non hai un grammofono funzionante, ma Antonio aveva trascritto qualcosa su un foglietto incollato alla scatola. È la voce del pittore, parola per parola: «Le mie sorelle mi portano i modelli. Io dipingo l'ultimo respiro. Loro restano a guardare, e ridono. Ridono sempre.»"; } },
-  fotografia:{ name:"una fotografia", words:["fotografia","foto","ritratto"], loc:"soffitta", desc:() => "Una vecchia foto: un uomo con il pennello in mano e due donne ai lati. Una ha i capelli raccolti. L'altra, minuta, con le mani piccole, ha un viso che conosci. L'hai visto stamattina, sopra una tonaca." },
-  registro:  { name:"il registro parrocchiale", words:["registro","libro"], loc:"sagrestia", fixed:true, desc:"Un registro dei morti della parrocchia, rilegato in pelle.",
-               leggi:() => { award("registro",5); return "Sfogli fino agli anni della guerra. «Legnani Buono, pittore — morto per sua mano.» Più sotto, a parte, una riga aggiunta con un altro inchiostro: «Le sorelle Legnani partite per ignota destinazione.» Nessuna data. Nessuna sepoltura."; } }
+  borsa:     { name:"la borsa da restauratore", words:["borsa","attrezzi","bisturi","solvente","spugna","spugne","pennelli"], loc:"inv",
+               desc:"La tua borsa di cuoio da restauratore. Dentro ci sono bisturi, spugne, una bottiglia di solvente e i pennelli: gli attrezzi del mestiere.",
+               apri:"Apri la borsa: bisturi, spugne, una bottiglia di solvente, pennelli. Gli attrezzi del mestiere." },
+  incarico:  { name:"la lettera d'incarico del Comune", words:["incarico","nomina","documento","timbro"], loc:"inv",
+               desc:"La lettera con cui il Comune ti affida il restauro dell'affresco, con il timbro del sindaco.",
+               leggi:"«Il signor Stefano, restauratore, è incaricato dal Comune del recupero dell'affresco di San Sebastiano nella chiesa parrocchiale.» Timbro e firma del sindaco." },
+  portafoglio:{ name:"il portafoglio", words:["portafoglio","soldi","lire","denaro"], loc:"inv",
+               desc:"Il tuo portafoglio, con qualche centinaio di lire.", apri:"Dentro ci sono qualche centinaio di lire e un biglietto del treno per Ferrara." },
+  busta:     { name:"una busta", words:["busta","lettera"], loc:"stanza",
+               desc:"Una busta gialla, trovata tra le cose di Antonio, con il tuo nome scritto a matita. È la sua grafia.",
+               leggi:() => { award("busta"); return "«Stefano, se leggi questa vuol dire che ho fatto tardi. Il Legnani non dipingeva di fantasia. Ascolta il nastro che ti ho lasciato. Non fidarti di nessuno, nemmeno di chi porta l'abito. — A.»"; },
+               apri:() => doRead(["busta"]) },
+  nastro:    { name:"una bobina di nastro", words:["nastro","bobina"], loc:"stanza",
+               desc:"Una bobina per registratore, con un'etichetta: «A. — appunti».",
+               leggi:"Sull'etichetta, con la grafia di Antonio: «A. — appunti». Per sentirla ti serve il registratore." },
+  registratore:{ name:"un registratore a bobine", words:["registratore","magnetofono"], loc:"stanza",
+               desc:"Il registratore portatile di Antonio. Pesante, ma funziona." },
+  torcia:    { name:"una torcia elettrica", words:["torcia","pila","lampada"], loc:"stanza", feel:true,
+               desc:() => F.torciaAccesa ? "La torcia è accesa." : "Una torcia elettrica, spenta." },
+  sigarette: { name:"un pacchetto di Nazionali", words:["sigarette","pacchetto","nazionali","sigaretta"], loc:null,
+               desc:"Un pacchetto di Nazionali, ancora sigillato. Tu non fumi." },
+  quaderno:  { name:"il quaderno di Antonio", words:["quaderno","appunti"], loc:null,
+               desc:"Un quaderno a quadretti, con la copertina nera. È pieno della grafia di Antonio.",
+               leggi:"Leggi le ultime pagine. «Il prete ha le mani di una donna. E una voce che non ha mai cambiato. Le sorelle Legnani non sono morte: le loro tombe sono vuote, ne sono sicuro. La chiave della cappella ce l'ha lui, nello scrittoio. E lo scrittoio si apre con una chiave che tiene dove si inginocchia. Il matto, Nerino, ha visto tutto nel '44: portagli da fumare e chiedigli del canneto.» L'ultima riga è a metà: «Domani salgo sul campanile a…»",
+               apri:() => doRead(["quaderno"]) },
+  piede:     { name:"un piede di porco", words:["piede","porco","leva","palanchino","ferro"], loc:"argine",
+               desc:"Un piede di porco arrugginito, dimenticato in fondo alla barca." },
+  chiave:    { name:"una chiave di ferro", words:["chiave","chiavone"], loc:null,
+               desc:"Una chiave di ferro lunga un palmo. Sull'anello c'è un cartellino: «Cappella L.»" },
+  chiavetta: { name:"una chiavetta d'ottone", words:["chiavetta","chiave","chiavino"], loc:null,
+               desc:"Una chiavetta d'ottone, piccola, da cassetto." },
+  taccuino:  { name:"il taccuino del pittore", words:["taccuino","schizzi","album"], loc:null,
+               desc:"Un taccuino di schizzi, con la copertina di tela. Sulla prima pagina c'è scritto «B. L.».",
+               leggi:"Sfogli il taccuino. Schizzi di uomini e donne in agonia, ognuno con un nome e una data sotto. Il forestiero del '44. Un ragazzo della valle. L'ultima pagina è recente, disegnata da un'altra mano, più minuta: è Antonio, che cade. La data è quella di ieri.",
+               apri:() => doRead(["taccuino"]) },
+  disco:     { name:"un disco inciso a mano", words:["disco","incisione","scatola"], loc:"cantina",
+               desc:"Un disco di cera graffiato a mano, in una scatola di cartone. Sull'etichetta, una sola parola: «Buono».",
+               ascolta:() => { award("disco"); return "Non hai un grammofono funzionante, ma nella scatola c'è un foglietto ripiegato: le parole incise sul disco, trascritte dal pittore con la sua grafia nervosa. È la sua voce, parola per parola: «Le mie sorelle mi portano i modelli. Io dipingo l'ultimo respiro. Loro restano a guardare, e ridono. Ridono sempre.»"; },
+               leggi:() => ITEMS.disco.ascolta() },
+  fotografia:{ name:"una fotografia", words:["fotografia","foto","ritratto"], loc:"soffitta",
+               desc:"Una vecchia foto: un uomo con il pennello in mano e due donne ai lati. Una ha i capelli raccolti. L'altra, minuta, con le mani piccole, ha un viso che conosci: lo stesso viso senza età del parroco." },
+  registro:  { name:"il registro parrocchiale", words:["registro","libro"], loc:"sagrestia", fixed:true,
+               desc:"Un registro dei morti della parrocchia, rilegato in pelle.", prendi:"Il registro è della parrocchia: lo lasci sullo scrittoio. Puoi sfogliarlo qui.",
+               leggi:() => { award("registro"); return "Sfogli fino agli anni della guerra. «Legnani Buono, pittore — morto per sua mano.» Più sotto, a parte, una riga aggiunta con un altro inchiostro: «Le sorelle Legnani partite per ignota destinazione.» Nessuna data. Nessuna sepoltura."; } }
 };
+
+/* ---------------- personaggi ----------------
+   where(): la stanza in cui si trova ora (o null).
+   topics: argomenti per "chiedi a X di Y" (parole chiave → risposta).
+   mostra / dai: reazioni quando gli mostri o gli dai un oggetto. */
+const NPCS = {
+  oste: {
+    name:"l'oste", words:["oste","locandiere"], where:() => "sala",
+    here:"L'oste asciuga i bicchieri dietro il bancone.",
+    desc:"Un omone con il grembiule unto e gli occhi piccoli. Asciuga sempre lo stesso bicchiere.",
+    parla:"«Buonasera, signor restauratore», dice l'oste senza smettere di asciugare. «Se le serve il telefono, è lì. Se le servono chiacchiere, provi al bar.»",
+    topics:[
+      { w:["antonio","amico","morte","caduto","campanile"], t:"«Il suo amico? Dicono che era ubriaco. Io dico che non beveva mai, ma chi mi ascolta.» Abbassa la voce: «Era salito sul campanile per guardare le valli col binocolo. Guardava sempre verso sud.»" },
+      { w:["telefono","carabinieri","maresciallo"], t:"«Il telefono funziona, quando vuole. Dall'altra parte risponde la caserma di Comacchio. Ma il maresciallo è uno che vuole le prove, glielo dico subito.»" },
+      { w:["casa","finestre","legnani","sorelle","pittore"], t:"L'oste smette di asciugare. «Quella casa oltre l'argine? Non ci va nessuno. Era dei Legnani. Il pittore si è ammazzato nel '44, e le sorelle sono andate via. Così dicono.»" },
+      { w:["parroco","prete","don"], t:"«Il parroco? È arrivato in paese subito dopo la guerra. Un sant'uomo. Piccolino. Non mangia mai qui.»" },
+      { w:["valigia","cose"], t:"«La valigia del suo amico gliel'ho portata su ieri sera. Non ho toccato niente, glielo giuro.»" }
+    ],
+    nonSo:"L'oste scrolla le spalle: «Di questo non so niente. Provi al bar, lì sanno tutto di tutti.»",
+    mostra:{
+      fotografia:() => "L'oste guarda la foto e impallidisce. «Metta via quella roba. Io non ho visto niente.»",
+      taccuino:() => "L'oste sfoglia una pagina e chiude subito il taccuino. «Queste cose le porti ai carabinieri. Il telefono è lì.»",
+      disco:() => "«Un disco? Non ho il grammofono, mi spiace.»"
+    }
+  },
+  barista: {
+    name:"il barista", words:["barista","gestore","cameriere"], where:() => "bar",
+    here:"Il barista ti guarda da dietro il bancone.",
+    desc:"Un uomo magro, con i baffi tinti e una sigaretta spenta all'angolo della bocca.",
+    parla:"«Cosa le servo?», chiede il barista. «Un bianco? Sigarette? O è venuto per le chiacchiere come il suo amico?»",
+    topics:[
+      { w:["antonio","amico","ubriaco"], t:"«Il suo amico veniva qui ogni sera. Un bicchiere di bianco, mai di più. Altro che ubriaco. Faceva domande. Troppe domande.»" },
+      { w:["nerino","matto","pazzo"], t:"«Nerino? Gira sullo stradone tutto il giorno. Non è cattivo. Fuma come un turco: se gli offre una sigaretta, le racconta la sua vita. Io gliele vendo, le sigarette.»" },
+      { w:["casa","legnani","sorelle","pittore","finestre"], t:"Il barista guarda i due vecchi, poi te. «Di quella casa qui non si parla. Chieda in Comune, se proprio vuole sapere. Hanno le carte.»" },
+      { w:["parroco","prete","don"], t:"«Il parroco non mette piede qui dentro. Dice che il bar è la casa del diavolo. Ha ragione, ma il vino è buono.»" },
+      { w:["sigarette","sigaretta","nazionali"], t:"«Nazionali, cinquanta lire il pacchetto. Basta dire: <em>compra sigarette</em>.»" },
+      { w:["maestra","scuola"], t:"«La maestra è una brava ragazza. Il suo amico ci parlava spesso, l'ultima settimana.»" }
+    ],
+    nonSo:"«Di questo non so niente», dice il barista. «Ma se compra qualcosa, magari mi torna in mente.»",
+    mostra:{
+      fotografia:() => "Il barista guarda la foto e smette di masticare la sigaretta. «Le sorelle Legnani. Quella piccolina era la minore, Clelia. Gesù.» Poi te la ridà in fretta.",
+      incarico:() => "«Bel timbro», dice il barista. «Lo faccia vedere al segretario in Comune, a lui piacciono i timbri.»"
+    }
+  },
+  segretario: {
+    name:"il segretario comunale", words:["segretario","impiegato","funzionario"], where:() => "municipio",
+    here:"Il segretario comunale ti guarda da sopra gli occhiali.",
+    desc:"Un ometto con le maniche di lustrino e gli occhiali sulla punta del naso. Timbra carte con grande energia.",
+    parla:() => F.permesso ? "«L'archivio è di sopra», dice il segretario. «Non porti via niente.»" : "«Desidera?», chiede il segretario, senza smettere di timbrare. «L'archivio non è aperto al pubblico. Ci vuole un'autorizzazione.»",
+    topics:[
+      { w:["archivio","fascicolo","carte","documenti"], t:() => F.permesso ? "«È di sopra. Il fascicolo che cerca è già sul tavolo: l'ha lasciato lì il suo amico.»" : "«L'archivio non è per i forestieri. Se il Comune l'ha incaricata davvero, avrà un documento con il timbro.»" },
+      { w:["antonio","amico"], t:"«Il suo amico è salito in archivio tre volte. Cercava le carte dei Legnani. Gli ho detto di lasciar perdere.»" },
+      { w:["legnani","sorelle","casa","pittore"], t:"«I Legnani? C'è un fascicolo, in archivio. Io non l'ho mai letto, e nemmeno lei dovrebbe.»" },
+      { w:["parroco","prete"], t:"«Il parroco è venuto a chiedere chi aveva consultato il fascicolo dei Legnani. Strano, no?»" }
+    ],
+    nonSo:"«Non è di mia competenza», dice il segretario, e timbra un'altra carta.",
+    mostra:{
+      incarico:() => { if (F.permesso) return "«Sì, sì, l'ho già vista. L'archivio è di sopra.»"; F.permesso = true; award("permesso"); return "Il segretario legge la lettera due volte, guarda il timbro controluce e sospira. «Va bene. L'archivio è di sopra. Non porti via niente.»"; },
+      busta:() => "«Una lettera privata? Non mi interessa. Mi serve un documento del Comune.»"
+    }
+  },
+  maestra: {
+    name:"la maestra", words:["maestra","insegnante","francesca"], where:() => "scuola",
+    here:"La maestra alza gli occhi dai quaderni.",
+    desc:"Una ragazza giovane, con i capelli corti e lo sguardo stanco. Ha gli occhi rossi, come chi ha pianto.",
+    parla:() => F.quadernoDato ? "«Ha letto il quaderno?», chiede la maestra a bassa voce. «Stia attento. Antonio non lo è stato abbastanza.»" : "«Lei è il restauratore», dice la maestra. «L'amico di Antonio.» Esita. «Lui mi ha lasciato una cosa, per un amico. Ma come faccio a sapere che è lei?»",
+    topics:[
+      { w:["antonio","amico","quaderno","cosa","pacchetto"], t:() => F.quadernoDato ? "«Antonio mi ha detto: se mi succede qualcosa, dallo a Stefano. E così ho fatto.»" : "«Antonio mi ha lasciato un quaderno, per un amico che doveva arrivare. Mi ha detto: lo riconoscerai perché avrà la mia lettera.»" },
+      { w:["filastrocca","lavagna","finestre","ride"], t:"«I bambini la cantano da sempre. Nessuno sa chi l'ha inventata. Ma i vecchi, quando la sentono, si fanno il segno della croce.»" },
+      { w:["casa","legnani","sorelle","pittore"], t:"«Mia nonna diceva che le sorelle Legnani portavano a casa i forestieri. E che i forestieri non tornavano. Ma mia nonna diceva tante cose.»" },
+      { w:["parroco","prete","don"], t:"La maestra abbassa la voce. «Il parroco non si confessa con nessuno, non ha parenti, e nessuno sa da dove venga. Non dico altro.»" },
+      { w:["nerino","matto"], t:"«Nerino non è matto come sembra. Ha visto qualcosa, da ragazzo. Da allora parla a pezzi.»" }
+    ],
+    nonSo:"«Non lo so», dice la maestra. «Mi dispiace.»",
+    mostra:{
+      busta:() => { if (F.quadernoDato) return "«Sì, ho capito chi è. Il quaderno ce l'ha già.»"; F.quadernoDato = true; I.quaderno.loc = "inv"; award("quaderno"); return "La maestra legge la lettera e riconosce la grafia. Le tremano le mani. Apre il cassetto della cattedra e ti dà un quaderno nero. «Antonio mi ha detto di darlo solo a lei. Ora capisco perché.» Prendi il quaderno di Antonio."; },
+      fotografia:() => "La maestra guarda la foto e si copre la bocca con la mano. «Quella è…» Non finisce la frase.",
+      quaderno:() => "«Lo legga tutto», dice la maestra. «Antonio scriveva le cose importanti in fondo.»"
+    },
+    dai:{ busta:"mostra" }
+  },
+  matto: {
+    name:"Nerino", words:["nerino","matto","pazzo"], where:() => "stradone",
+    here:"Nerino, il matto del paese, cammina avanti e indietro tra i pioppi.",
+    desc:"Un uomo senza età, con un cappotto troppo grande e le dita gialle di nicotina. Parla da solo.",
+    parla:() => F.mattoAmico ? "Nerino fuma e ti guarda di sbieco. «Chiedi, chiedi. Nerino si ricorda.»" : "Nerino ti guarda e ride. «Ridono! Ridono le finestre!» Poi si tocca le tasche vuote. «Nerino ha voglia di fumare. Nessuno dà da fumare a Nerino.»",
+    topics:[
+      { w:["canneto","strada","sentiero","canne"], t:() => { if (!F.mattoAmico) return "«Il canneto… ci si perde, ci si perde…» Nerino si tocca le tasche. «Nerino ha voglia di fumare.»"; if (!F.sentiero){ F.sentiero = true; award("sentiero"); } return "Nerino si fa serio. «Nel canneto, di notte, si segue la canna spezzata. Sempre la spezzata. Così passavano le signorine, con i forestieri.»"; } },
+      { w:["casa","finestre","legnani","sorelle","signorine"], t:() => F.mattoAmico ? "«Le due signorine. Una ride ancora, nel letto. L'altra…» Nerino si guarda intorno. «L'altra ha cambiato vestito.»" : "«Ridono! Ridono!» Nerino si tocca le tasche. «Fumare…»" },
+      { w:["44","quarantaquattro","notte","guerra","visto"], t:() => F.mattoAmico ? "«Nel '44 Nerino era ragazzo. Ha visto il forestiero entrare nella casa. Non è uscito. Il pittore piangeva e dipingeva, piangeva e dipingeva.»" : "Nerino scuote la testa e ride. «Fumare. Prima fumare.»" },
+      { w:["antonio","amico"], t:() => F.mattoAmico ? "«Il tuo amico guardava dal campanile. Poi qualcuno è salito dopo di lui. Passi piccoli. Nerino li ha sentiti.»" : "«L'amico… volava!» Nerino ride, poi smette di colpo." },
+      { w:["parroco","prete"], t:() => F.mattoAmico ? "Nerino si fa il segno della croce al contrario e ride. «Il prete ha le mani piccole. Piccole piccole.»" : "Nerino si fa il segno della croce al contrario e ride." }
+    ],
+    nonSo:() => F.mattoAmico ? "«Nerino non sa. Nerino sa solo del canneto, della casa e del '44.»" : "«Ridono! Ridono!» Nerino si tocca le tasche. «Fumare…»",
+    dai:{
+      sigarette:() => { I.sigarette.loc = null; F.mattoAmico = true; award("matto"); return "Nerino afferra il pacchetto con le mani che tremano, ne accende subito una e chiude gli occhi. «Nerino adesso si ricorda», dice. «Chiedi. Chiedi del canneto, della casa, del '44.»"; }
+    },
+    mostra:{
+      sigarette:() => "Gli occhi di Nerino si accendono. «Dalle a Nerino! Dalle!»",
+      fotografia:() => "Nerino guarda la foto e smette di ridere. Indica la donna minuta. «Lei. Lei ha cambiato vestito.»"
+    }
+  },
+  pescatore: {
+    name:"il pescatore", words:["pescatore","tonino"], where:() => "capanno",
+    here:"",
+    desc:"Un vecchio con le mani nodose e la pelle cotta dal sole. Ripara una rete senza guardarla.",
+    parla:"«Forestiero», dice il pescatore senza alzare gli occhi. «Qui non viene mai nessuno. Cosa cerca?»",
+    topics:[
+      { w:["casa","legnani","sorelle","finestre"], t:"«La casa dei Legnani è oltre il canneto. Io non ci vado più. Di notte si vede una luce alla finestra della camera, e quella è una casa vuota.»" },
+      { w:["canneto","strada","sentiero"], t:"«Nel canneto ci si perde, anche di giorno. C'è chi conosce la strada. Nerino la conosce, ma bisogna saperlo prendere.»" },
+      { w:["barca","leva","piede","palanchino","ferro"], t:"«La barca sull'argine era mia. Dentro c'è ancora il mio palanchino. Se le serve, lo prenda pure: io laggiù non ci torno.»" },
+      { w:["antonio","amico"], t:"«Il suo amico è passato di qui due giorni fa. Voleva sapere della casa. Gli ho detto di stare lontano.»" },
+      { w:["anguille","pesce","pesca"], t:"«Anguille. Le valli danno solo quelle, ormai. E i morti.»" }
+    ],
+    nonSo:"Il pescatore scuote la testa. «Non lo so. Io so solo di acqua e di anguille.»",
+    mostra:{ fotografia:() => "Il pescatore guarda la foto e sputa per terra. «Butti via quella roba, finché è in tempo.»" }
+  },
+  parroco: {
+    name:"il parroco", words:["parroco","prete","don","sacerdote","tonaca"], where:() => F.allarme ? null : F.parrocoFuori ? "chiesa" : "sagrestia",
+    here:() => F.parrocoFuori ? "" : "Il parroco è seduto allo scrittoio e alza gli occhi quando entri. Ha mani piccole e una voce dolce, troppo dolce.",
+    desc:"Un uomo minuto, senza età, con la tonaca abbottonata fino al collo. Le mani sono piccole e bianche. Ti guarda senza sbattere le palpebre.",
+    parla:"«Il Legnani era un'anima tormentata, figliolo», dice il parroco. «Certe cose si dipingono per dimenticarle. Lei faccia il suo lavoro e non scavi più del necessario.» Poi sorride. Non ti piace quel sorriso.",
+    topics:[
+      { w:["affresco","dipinto","sebastiano","figure","donne","lavoro","restauro"], t:() => {
+          if (F.parrocoFuori) return "Il parroco non risponde. Fissa l'affresco e muove le labbra senza voce.";
+          if (!F.affrescoPulito) return "«L'affresco? Lo pulisca, lo pulisca. È per questo che il Comune la paga.»";
+          F.parrocoFuori = true; S.parrocoBack = S.moves + PARROCO_FUORI; award("parroco");
+          return "Quando gli dici che l'affresco è tornato visibile, il parroco diventa pallido. «Le figure? Si vedono le figure?» Si alza di scatto. «Devo vederlo. Subito.» Esce dalla porticina verso la chiesa. La sagrestia è vuota."; } },
+      { w:["antonio","amico"], t:"«Povero ragazzo. Il vino è una brutta bestia. Ho detto una messa per lui stamattina.» Le sue mani piccole non stanno ferme." },
+      { w:["legnani","sorelle","casa","pittore"], t:"«Le sorelle Legnani sono partite tanti anni fa. Per il nord, credo. Il paese ha la memoria lunga e la lingua più lunga ancora.»" },
+      { w:["registro","morti"], t:"«Il registro? Lo sfogli pure, figliolo. I morti non hanno segreti.»" },
+      { w:["chiave","cappella","cimitero"], t:"«La cappella dei Legnani è chiusa da anni. Non c'è niente da vedere.» Ma i suoi occhi vanno, per un istante, allo scrittoio." }
+    ],
+    nonSo:"«Non saprei, figliolo», dice il parroco, sorridendo con la bocca e non con gli occhi.",
+    mostra:{
+      fotografia:() => morteParroco("fotografia"),
+      taccuino:() => morteParroco("taccuino"),
+      disco:() => morteParroco("disco"),
+      quaderno:() => morteParroco("quaderno")
+    },
+    dai:{ fotografia:"mostra", taccuino:"mostra", disco:"mostra", quaderno:"mostra" }
+  }
+};
+
+function morteParroco(what){
+  die("Mostri al parroco " + ITEMS[what].name + ". Il parroco guarda a lungo, in silenzio, poi sorride. «Lei ha lavorato tanto, figliolo. Beva un goccio con me, è vino della messa.» Ti versa un bicchiere. Il vino è dolce, troppo dolce. Quando le gambe ti cedono, lui ti accarezza la fronte con la sua mano piccola. «Come l'altro», sussurra. «Proprio come l'altro.»");
+  return null;
+}
+
 
 /* ---------- codice di salvataggio ----------
    GAME_ID: 3 lettere + 1 cifra di versione, diverso per ogni storia.
@@ -367,26 +808,30 @@ const ITEMS = {
    verranno rifiutati invece di caricare uno stato sbagliato.
    GAME_URL: indirizzo pubblico del gioco (es. la pagina su GitHub).
    Il QR punta a GAME_URL#codice, così si apre già caricato. */
-const GAME_ID  = "FCR1";
+const GAME_ID  = "FCR2";
 const GAME_URL = "https://giacomopeli.github.io/Adventures/finestre.html";
 const SAVE_SPEC = {
-  flags:  ["torciaAccesa","affrescoPulito","grataAperta","allarme","nastroAscoltato"],
-  awards: { busta:5, nastro:10, affresco:15, registro:5, piede:5, grata:10, disco:10, foto:15, finale:25 }
+  flags: ["torciaAccesa","affrescoPulito","grataAperta","allarme","permesso","quadernoDato","mattoAmico","sentiero",
+          "parrocoFuori","chiavettaVista","scrittoioAperto","cancelloAperto","lapideAperta",
+          "cassettoStanza","armadioAperto","cassettoCamera","credenzaAperta"],
+  /* punti per ogni traguardo: la somma fa 100 */
+  awards: { busta:2, nastro:3, quaderno:6, permesso:4, fascicolo:6, matto:5, sentiero:4, affresco:7, parroco:4,
+            chiavetta:3, scrittoio:4, biglietto:2, cancello:4, taccuino:10, piede:2, grata:4, disco:8, foto:8, registro:2, finale:12 }
 };
+const START_ROOM = "stanza";
 
 /* =========================================================
    MOTORE
    ========================================================= */
 let F, I, S;
-const START_ROOM = "piazza";
+let OPEN = {};   /* non più usato: i mobili aperti sono nei flag; resta per compatibilità */
 function newGame(){
   F = {}; SAVE_SPEC.flags.forEach(k => F[k] = false);
   I = {}; for (const k in ITEMS) I[k] = { loc: ITEMS[k].loc };
-  S = { loc:START_ROOM, score:0, moves:0, awarded:{}, over:false };
+  S = { loc:START_ROOM, score:0, moves:0, awarded:{}, over:false, alarmAt:0, parrocoBack:0 };
 }
 /* Controlla e ripara uno stato arrivato da fuori (salvataggio locale,
-   aggiornamento della pagina): campi mancanti o di versioni vecchie
-   tornano ai valori iniziali invece di far crashare il gioco. */
+   aggiornamento della pagina): campi mancanti tornano ai valori iniziali. */
 function adoptState(d){
   if (!d || typeof d !== "object" || !d.S || !ROOMS[d.S.loc]) return false;
   const nF = {}; SAVE_SPEC.flags.forEach(k => nF[k] = !!(d.F && d.F[k]));
@@ -396,32 +841,35 @@ function adoptState(d){
     nI[k] = { loc: (l === null || l === "inv" || ROOMS[l]) ? l : ITEMS[k].loc };
   }
   const nA = {}; for (const k in SAVE_SPEC.awards) if (d.S.awarded && d.S.awarded[k]) nA[k] = true;
+  const num = v => Math.max(0, Math.floor(+v) || 0);
   F = nF; I = nI;
-  S = { loc:d.S.loc, moves: Math.max(0, Math.floor(+d.S.moves) || 0), over: !!d.S.over, awarded:nA,
+  S = { loc:d.S.loc, moves:num(d.S.moves), over:!!d.S.over, awarded:nA, alarmAt:num(d.S.alarmAt), parrocoBack:num(d.S.parrocoBack),
         score: Object.keys(nA).reduce((t,k) => t + SAVE_SPEC.awards[k], 0) };
   return true;
 }
-const DIR = { n:"n", nord:"n", s:"s", sud:"s", e:"e", est:"e", o:"o", ovest:"o", w:"o", su:"su", sali:"su", alto:"su", g:"giu", giu:"giu", scendi:"giu", basso:"giu" };
+const DIR = { n:"n", nord:"n", s:"s", sud:"s", e:"e", est:"e", o:"o", ovest:"o", w:"o", su:"su", sali:"su", alto:"su", sopra:"su", g:"giu", giu:"giu", scendi:"giu", basso:"giu" };
 const DIRNAME = { n:"nord", s:"sud", e:"est", o:"ovest", su:"su", giu:"giù" };
-const STOP = new Set("il lo la i gli le l un uno una del dello della dell dei degli delle al allo alla all ai agli alle nel nello nella nell nei negli nelle sul sullo sulla sull sui dal dallo dalla dall dai dalle di a da in con col coi e verso dentro sopra sotto per mio mia".split(" "));
+const STOP = new Set("il lo la i gli le l un uno una del dello della dell dei degli delle al allo alla all ai agli alle nel nello nella nell nei negli nelle sul sullo sulla sull sui dal dallo dalla dall dai dalle di a da in con col coi e verso dentro sopra sotto per mio mia tuo tua suo sua che".split(" "));
+const normalize = raw => String(raw).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[’']/g," ").replace(/[^a-z0-9 ]/g," ").trim();
+const stem = w => w.length > 4 ? w.replace(/[aeiou]$/,"") : w;
+const same = (a,b) => a === b || stem(a) === stem(b);
 
 const logEl = document.getElementById("log"), scr = document.getElementById("screen");
-function say(t, cls){ const p=document.createElement("p"); p.className=(cls?cls+" ":"")+"new"; p.innerHTML=t; logEl.appendChild(p); }
+function say(t, cls){ if (t === null || t === undefined || t === "") return; const p=document.createElement("p"); p.className=(cls?cls+" ":"")+"new"; p.innerHTML=t; logEl.appendChild(p); }
 const val = v => typeof v === "function" ? v() : v;
 const here = () => ROOMS[S.loc];
-function award(k,n){ if (S.awarded[k]) return; S.awarded[k]=true; S.score+=n; }
+function award(k){ if (S.awarded[k] || !(k in SAVE_SPEC.awards)) return; S.awarded[k]=true; S.score+=SAVE_SPEC.awards[k]; }
 function haveLight(){ return F.torciaAccesa && (I.torcia.loc==="inv" || I.torcia.loc===S.loc); }
 function canSee(){ return !here().dark || haveLight(); }
 function itemsAt(loc){ return Object.keys(I).filter(k => I[k].loc===loc && !ITEMS[k].fixed); }
 function has(k){ return I[k].loc==="inv"; }
 function list(a){ return a.length<2 ? a.join("") : a.slice(0,-1).join(", ")+" e "+a[a.length-1]; }
-
 const realExits = r => Object.keys(r.exits).filter(d => r.exits[d].charAt(0) !== "!");
-function actionCmd(text){
-  const parts = normalize(text).split(/\s+/);
-  return dispatch(parts[0], parts.slice(1).filter(w => !STOP.has(w)), parts);
-}
-const normalize = raw => raw.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[’']/g," ").replace(/[^a-z0-9 ]/g," ").trim();
+const visibleScenery = sc => !sc.inside || F[sc.inside];
+const npcsHere = () => Object.keys(NPCS).filter(k => NPCS[k].where() === S.loc);
+const parrocoQui = () => NPCS.parroco.where() === S.loc;
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+
 function describe(){
   const r = here();
   say(r.name, "room");
@@ -431,12 +879,14 @@ function describe(){
     if (felt.length) say("A tentoni, ai tuoi piedi, riconosci " + list(felt) + ".");
   } else {
     say(val(r.desc));
+    npcsHere().forEach(k => say(val(NPCS[k].here)));
     const its = itemsAt(S.loc).map(k => ITEMS[k].name);
     if (its.length) say("Qui vedi " + list(its) + ".");
   }
   say("Uscite: " + realExits(r).map(d => DIRNAME[d]).join(", ") + ".", "meta");
 }
 
+/* Cerca un oggetto, un personaggio o un elemento della stanza tra le parole date. */
 function find(words){
   const vis = canSee();
   for (const w of words){
@@ -444,69 +894,139 @@ function find(words){
       if (!ITEMS[k].words.includes(w)) continue;
       if (I[k].loc==="inv" || (I[k].loc===S.loc && (vis || ITEMS[k].feel))) return { kind:"item", key:k, def:ITEMS[k] };
     }
+    if (vis) for (const k of npcsHere()){
+      if (NPCS[k].words.includes(w)) return { kind:"npc", key:k, def:NPCS[k] };
+    }
     if (vis) for (const k in (here().scenery||{})){
-      const sc = here().scenery[k]; if (sc.words.includes(w)) return { kind:"scenery", key:k, def:sc };
+      const sc = here().scenery[k]; if (sc.words.includes(w) && visibleScenery(sc)) return { kind:"scenery", key:k, def:sc };
     }
   }
   return null;
 }
 function mentionsKnown(words){
-  return words.some(w => Object.values(ITEMS).some(d => d.words.includes(w)) || Object.values(ROOMS).some(r => Object.values(r.scenery||{}).some(s => s.words.includes(w))));
+  return words.some(w => Object.values(ITEMS).some(d => d.words.includes(w)) || Object.values(NPCS).some(d => d.words.includes(w)) || Object.values(ROOMS).some(r => Object.values(r.scenery||{}).some(s => s.words.includes(w))));
 }
+/* Rete di sicurezza: una parola che compare nel testo che il giocatore ha
+   davanti, ma che non è un oggetto previsto, riceve una risposta generica
+   invece di "non vedo niente del genere". */
+function mentionedHere(words){
+  const r = here();
+  let text = val(r.desc);
+  for (const k in (r.scenery||{})) if (visibleScenery(r.scenery[k])) text += " " + val(r.scenery[k].desc);
+  for (const k of npcsHere()) text += " " + val(NPCS[k].desc) + " " + val(NPCS[k].here);
+  for (const k in I) if (I[k].loc===S.loc || I[k].loc==="inv") text += " " + val(ITEMS[k].desc);
+  const toks = new Set(normalize(text).split(/\s+/).filter(w => w.length >= 4).map(stem));
+  return words.some(w => w.length >= 4 && toks.has(stem(w)));
+}
+const notHere = words => canSee() && mentionedHere(words);
 
 function go(d){
   const r = here(), to = r.exits[d];
   if (!to || (r.hideDir && r.hideDir[d])) return say("Da quella parte non si può andare.");
   if (r.guard && r.guard[d]) { const m = r.guard[d](); if (m) return say(m); }
   if (to.charAt(0) === "!") return actionCmd(to.slice(1));
-  if (r.dark && !canSee()) say("Avanzi a tentoni, una mano contro il muro.", "amb");
+  if (r.dark && !canSee()) say(["argine","canneto"].includes(S.loc) ? "Avanzi a tentoni nel buio, un passo alla volta." : "Avanzi a tentoni, una mano contro il muro.", "amb");
   if (F.allarme && to==="camera") return die("Spingi la porta della camera. Il letto è vuoto, le coperte buttate da parte. Dietro di te, vicinissima, una voce di vecchia comincia a ridere. È l'ultima cosa che senti.");
-  if (F.allarme && to==="sagrestia") return die("Il parroco ti aspetta in piedi, dietro la porta. Non dice niente. Sorride, con quelle mani piccole strette intorno a qualcosa che brilla. La porticina si chiude alle tue spalle.");
+  if (F.allarme && to==="sagrestia") return die("Il parroco ti aspetta in piedi, dietro la porticina. Non dice niente. Sorride, con quelle mani piccole strette intorno a qualcosa che brilla. La porticina si chiude alle tue spalle.");
   S.loc = to;
   describe();
 }
-function die(t){ say(t,"bad"); say("*** Sei morto ***","end"); say("Scrivi <em>ricomincia avventura</em> per riprovare, oppure <em>carica</em> se avevi salvato.","meta"); S.over = true; }
-function win(){
-  award("finale",25);
-  say("Giri la manovella. Una voce assonnata, poi sveglia di colpo: è il maresciallo di Comacchio. Gli racconti tutto, la casa, la fotografia, il disco. Lui ascolta in silenzio e dice che all'alba sarà lì, con i suoi uomini.");
-  say("Aspetti l'alba seduto sul letto, la sedia contro la porta. Quando arriva la camionetta dei carabinieri, la nebbia si alza e il paese sembra un paese qualunque.");
-  say("Dalla finestra vedi il parroco attraversare la piazza. Si ferma, alza la testa verso di te e ti saluta con la sua mano piccola. Sorride. Poi entra in chiesa, e la porta si chiude.");
-  say(`*** Fine. Punteggio ${S.score}/100 in ${S.moves} mosse ***`,"end win");
-  say("Scrivi <em>ricomincia avventura</em> per una nuova partita.","meta");
-  S.over = true;
+function actionCmd(text){
+  const parts = normalize(text).split(/\s+/);
+  return dispatch(parts[0], parts.slice(1).filter(w => !STOP.has(w)), parts);
 }
 
+/* ---------------- finali ---------------- */
+function die(t){ say(t,"bad"); say("*** Sei morto ***","end"); say("Scrivi <em>ricomincia avventura</em> per riprovare, oppure <em>carica</em> se avevi salvato.","meta"); S.over = true; }
+const MORTE_IMPALCATURA = "Superi il parapetto dell'impalcatura. Per un istante i banchi sembrano vicini, a portata di salto. Poi la navata ti viene incontro, molto prima di quanto pensassi, con un colpo sordo che rimbomba fino all'altare. Mentre tutto si spegne, l'ultima cosa che vedi è l'affresco sopra di te: San Sebastiano, e le due figure ai suoi lati che sorridono. Come Antonio, anche tu sei caduto dall'alto.";
+const PROVE = ["fotografia","disco","taccuino"];
+function doPhone(){
+  if (S.loc!=="sala") return say("L'unico telefono del paese è nella sala della locanda, sulla piazza.");
+  const p = PROVE.filter(has);
+  if (p.length === 3){
+    award("finale");
+    say("Giri la manovella. Una voce assonnata, poi sveglia di colpo: è il maresciallo di Comacchio. Gli racconti tutto: la casa, la fotografia, la voce del pittore sul disco, il taccuino con i nomi dei morti e, sull'ultima pagina, Antonio. Lui ascolta in silenzio. «Non si muova da lì. Arriviamo.»");
+    say("All'alba la camionetta dei carabinieri entra in piazza. Il maresciallo legge il taccuino in piedi, pagina per pagina, e diventa grigio. Poi manda due uomini alla casa oltre il canneto e due in sagrestia.");
+    say("Nella casa trovano la vecchia, seduta sul letto, che ride. In sagrestia trovano il parroco che li aspetta, con le mani piccole giunte. Quando gli tolgono la tonaca, sotto c'è una donna. «Sapevo che prima o poi qualcuno avrebbe ripulito l'affresco», dice soltanto. Poi sorride, come nel dipinto.");
+    say("Il giorno dopo finisci il restauro. Le due figure ai lati di San Sebastiano restano lì, visibili a tutti. Il paese, per la prima volta, le guarda.");
+    say(`*** Fine. Hai vinto. Punteggio ${S.score}/100 in ${S.moves} mosse ***`,"end win");
+    say("Scrivi <em>ricomincia avventura</em> per una nuova partita.","meta");
+    S.over = true; return;
+  }
+  if (p.length === 2){
+    say("Giri la manovella e racconti tutto al maresciallo di Comacchio. Lui ascolta, sbuffa, poi dice: «Va bene. Domattina vengo a vedere.»");
+    say("La camionetta arriva a mezzogiorno. Alla casa oltre il canneto i carabinieri trovano solo un letto vuoto e la brace spenta. In sagrestia, la tonaca del parroco è piegata sullo scrittoio. Di lui non c'è traccia.");
+    const manca = PROVE.find(k => !has(k));
+    const perche = { fotografia:"«Senza una prova di chi sono davvero, quei due, non posso arrestare nessuno»", disco:"«Senza una confessione non posso fare niente»", taccuino:"«Senza prove sui morti non posso fare niente»" }[manca];
+    say(perche + ", ti dice il maresciallo prima di ripartire. Quella sera, sulla porta della tua stanza, qualcuno ha disegnato col gesso una bocca che ride.");
+    say(`*** Fine amara: ti mancava una prova. Punteggio ${S.score}/100 in ${S.moves} mosse ***`,"end");
+    say("Con tutte e tre le prove il finale è un altro. Scrivi <em>ricomincia avventura</em> o <em>carica</em> per riprovare.","meta");
+    S.over = true; return;
+  }
+  if (p.length === 1) return say("Giri la manovella e parli col maresciallo di Comacchio. Lui ascolta e sospira: «Una prova sola? Mi porti qualcosa di più, signor restauratore. Qualcosa che regga davanti a un giudice.»");
+  say("Giri la manovella. Dall'altra parte, il maresciallo ascolta e sospira: «Mi porti delle prove, e poi ne parliamo.»");
+}
+
+/* ---------------- azioni con oggetti speciali ---------------- */
 function forzaGrata(){
   if (S.loc!=="cortile") return "Qui non c'è niente da forzare.";
   if (F.grataAperta) return "È già divelta.";
   if (!has("piede")) return "I cardini sono marci, ma a mani nude non basta. Ti servirebbe una leva.";
-  F.grataAperta = true; award("grata",10);
+  F.grataAperta = true; award("grata");
   return "Infili il piede di porco sotto la grata e fai leva. Il ferro geme, poi i cardini cedono con uno schiocco che rimbomba nelle valli. Per un lungo momento resti immobile, in ascolto. Niente. Sotto di te, una finestrella buia porta in cantina.";
 }
+function forzaLapide(){
+  if (S.loc!=="cappella") return "Qui non c'è niente da forzare.";
+  if (F.lapideAperta) return "La lapide è già smossa. Dietro, i loculi sono vuoti.";
+  if (!has("piede")) return "La malta lungo i bordi è fresca, ma a mani nude la lapide non si muove. Ti servirebbe una leva.";
+  F.lapideAperta = true; if (I.taccuino.loc === null) I.taccuino.loc = "cappella";
+  return "Infili il piede di porco tra il marmo e il muro. La lapide delle sorelle scivola di lato con un rumore di denti. Dietro, i loculi sono vuoti: nessuna bara, nessun corpo. Solo polvere e, appoggiato in fondo, un taccuino di tela.";
+}
+function apriCancello(){
+  if (S.loc!=="cimitero") return "Qui non c'è nessun cancello.";
+  if (F.cancelloAperto) return "Il cancello è già aperto.";
+  if (!has("chiave")) return "Il cancello è chiuso a chiave. Ci vuole la chiave della sua serratura.";
+  F.cancelloAperto = true; award("cancello");
+  return "La chiave di ferro entra nella serratura antica e gira con fatica, due mandate. Il cancello della cappella si apre con un lamento.";
+}
 
+/* ---------------- verbi ---------------- */
 function doTake(words){
   if (!words.length) return say("Prendere cosa?");
   if (words[0]==="tutto"){
     if (!canSee()) return say("Al buio non vedi niente da prendere.");
-    const its = itemsAt(S.loc); if (!its.length) return say("Non c'è niente da prendere.");
+    let its = itemsAt(S.loc);
+    if (S.loc==="sagrestia" && parrocoQui()) its = its.filter(k => k!=="chiavetta" && k!=="chiave");
+    if (!its.length) return say("Non c'è niente da prendere.");
     its.forEach(k => I[k].loc="inv"); say("Prendi " + list(its.map(k=>ITEMS[k].name)) + ".");
     its.forEach(onTake); return;
   }
   const o = find(words);
-  if (!o) return say(canSee() ? "Qui non vedo niente del genere." : "Al buio non trovi niente.");
-  if (o.kind==="scenery" || o.def.fixed) return say("Non puoi portarlo via.");
+  if (!o) return say(notHere(words) ? "Non ti serve. Lo lasci dov'è." : canSee() ? "Qui non vedo niente del genere." : "Al buio non trovi niente.");
+  if (o.kind==="npc" || o.def.npcLike) return say("Non ti sembra il caso.");
+  if (o.def.prendi) return say(val(o.def.prendi));
+  if (o.kind==="scenery" || o.def.fixed) return say("Non è una cosa che puoi portare via.");
   if (has(o.key)) return say("Ce l'hai già.");
+  if ((o.key==="chiavetta" || o.key==="chiave") && parrocoQui()) return say("Il parroco ti guarda. Non è il momento.");
   I[o.key].loc="inv"; say("Prendi " + o.def.name + "."); onTake(o.key);
 }
 function onTake(k){
-  if (k==="piede") award("piede",5);
+  if (k==="piede") award("piede");
+  if (k==="chiavetta") award("chiavetta");
+  if (k==="taccuino") award("taccuino");
+  if (k==="disco") award("disco");
   if (k==="fotografia" && !F.allarme){
-    F.allarme = true; award("foto",15);
-    say("Mentre infili la foto in tasca, sotto di te una molla del letto cigola. Poi un fruscio di coperte. Poi, lenti, dei passi che attraversano la camera. Qualcuno, in questa casa, non è paralizzato come sembrava.","bad");
+    F.allarme = true; S.alarmAt = S.moves; award("foto");
+    say("Mentre infili la foto in tasca, sotto di te una molla del letto cigola. Poi un fruscio di coperte. Poi, lenti, dei passi che attraversano la camera. Qualcuno, in questa casa, non è paralizzato come sembrava. Devi andartene, subito, e arrivare a un telefono.","bad");
   }
 }
 function doDrop(words){
   if (!words.length) return say("Lasciare cosa?");
+  if (words[0]==="tutto"){
+    const its = Object.keys(I).filter(k => I[k].loc==="inv");
+    if (!its.length) return say("Non hai niente con te.");
+    its.forEach(k => I[k].loc = S.loc); return say("Lasci " + list(its.map(k=>ITEMS[k].name)) + ".");
+  }
   const o = find(words);
   if (!o || o.kind!=="item" || !has(o.key)) return say("Non ce l'hai.");
   I[o.key].loc = S.loc; say("Lasci " + o.def.name + ".");
@@ -517,41 +1037,81 @@ function doInv(){
 }
 function doExamine(words){
   if (!words.length) return describe();
+  const roomWords = normalize(here().name).split(/\s+/).filter(w => w.length >= 4);
+  if (words.every(w => roomWords.includes(w))) return describe();
+  if (words.some(w => w==="intorno" || w==="stanza" || w==="luogo")) return describe();
   const o = find(words);
-  if (!o) return say(canSee() ? "Qui non vedo niente del genere." : "È troppo buio per vedere qualcosa.");
-  if (o.key==="fotografia") award("foto",15);
+  if (!o) return say(notHere(words) ? "Lo osservi bene, ma non noti niente di particolare." : canSee() ? "Qui non vedo niente del genere." : "È troppo buio per vedere qualcosa.");
+  if (o.def.onExamine){ const r = o.def.onExamine(); if (r) return say(r); }
   say(val(o.def.desc));
 }
-function doOpen(words){
+function doSearch(words){
+  if (!words.length) return say(canSee() ? "Cerchi intorno a te, ma non trovi niente che non avessi già visto." : "Al buio non trovi niente.");
   const o = find(words);
-  if (!o) return say(words.length ? "Qui non c'è niente del genere da aprire." : "Aprire cosa?");
-  if (o.def.apri) return say(o.def.apri());
-  if (o.key==="busta") return doRead(["busta"]);
-  say("Non si apre.");
+  if (!o) return say(notHere(words) ? "Cerchi, ma non trovi niente." : "Qui non vedo niente del genere.");
+  if (o.def.cerca) return say(val(o.def.cerca));
+  if (o.def.onExamine || o.def.container) return o.def.container ? doOpen(words) : doExamine(words);
+  if (o.kind==="npc" || o.def.npcLike) return say("Non ti sembra il caso di perquisire nessuno.");
+  say("Cerchi con attenzione, ma non trovi niente di nascosto.");
+}
+function doOpen(words){
+  if (!words.length) return say("Aprire cosa?");
+  const o = find(words);
+  if (!o) return say(notHere(words) ? "Non è una cosa che si apre." : "Qui non c'è niente del genere da aprire.");
+  const d = o.def;
+  if (d.container){
+    if (F[d.container]) return say(val(d.desc));
+    const lock = d.lock ? d.lock() : null;
+    if (lock) return say(lock);
+    F[d.container] = true;
+    const extra = d.onOpen ? d.onOpen() : (d.opentxt || "Fatto.");
+    return say(extra + " " + val(d.desc));
+  }
+  if (d.apri) return say(val(d.apri));
+  say(o.kind==="npc" || d.npcLike ? "Non ti sembra il caso." : "Non è una cosa che si apre.");
+}
+function doClose(words){
+  if (!words.length) return say("Chiudere cosa?");
+  const o = find(words);
+  if (!o) return say("Qui non c'è niente del genere da chiudere.");
+  if (o.def.container){
+    if (!F[o.def.container]) return say("Non c'è niente da richiudere.");
+    F[o.def.container] = false;
+    if (o.key==="scrittoio" && I.chiave.loc==="sagrestia") I.chiave.loc = null;
+    return say("Richiudi tutto com'era.");
+  }
+  say("Meglio lasciare le cose come stanno.");
 }
 function doRead(words){
+  if (!words.length) return say("Leggere cosa?");
   const o = find(words);
-  if (!o) return say(words.length ? "Qui non c'è niente del genere." : "Leggere cosa?");
-  if (o.def.leggi) return say(o.def.leggi());
-  if (o.key==="disco") return say(ITEMS.disco.ascolta());
+  if (!o) return say(notHere(words) ? "Non c'è niente da leggere." : "Qui non c'è niente del genere.");
+  if (o.def.leggi) return say(val(o.def.leggi));
   say("Non c'è niente da leggere.");
 }
 function doListen(words){
-  if (!words.length) return say(S.loc==="camera"&&canSee() ? "Il respiro della vecchia. Regolare. Troppo regolare." : "Senti il silenzio delle valli, che non è mai silenzio davvero.");
+  if (!words.length){
+    const SOUND = { camera:"Il respiro della vecchia. Regolare. Troppo regolare.", bar:"Lo schiocco delle carte sul tavolino e il ronzio di una mosca.", sala:"Il tintinnio dei bicchieri che l'oste asciuga.",
+      chiesa:"Il silenzio della navata. Ogni tuo passo rimbomba.", capanno:"Lo sfrigolio delle anguille in padella.", scuola:"La penna della maestra che gratta sui quaderni.",
+      municipio:"Il colpo secco del timbro, di nuovo, e di nuovo.", corridoio:"Un respiro lento, dalla porta a est.", stanza:"Le voci basse della sala, al piano di sotto." };
+    return say(SOUND[S.loc] || (["argine","canneto","cortile","stradone"].includes(S.loc) ? "Senti il silenzio delle valli, che non è mai silenzio davvero." : "Senti solo il tuo respiro."));
+  }
   const o = find(words);
   if (!o) return say("Qui non c'è niente del genere.");
-  if (o.key==="nastro"){
+  if (o.key==="nastro" || o.key==="registratore"){
+    if (!has("nastro") && I.nastro.loc!==S.loc) return say("Il registratore è vuoto: ti serve il nastro.");
     if (!has("registratore") && I.registratore.loc!==S.loc) return say("Ti serve il registratore.");
-    F.nastroAscoltato = true; award("nastro",10);
-    return say("Infili la bobina e premi il tasto. Fruscio, poi la voce di Antonio, bassa e affannata: «…la casa è oltre l'argine, a sud. Quella con le finestre. Di notte, senza luce, ti perdi e finisci in acqua. La porta è incatenata, ma la grata della cantina ha i cardini marci: basta una leva. I pescatori ne lasciano sempre in giro, nelle barche. E Stefano… guarda bene chi c'è nell'affresco.» Poi un rumore, e il nastro finisce.");
+    award("nastro");
+    return say("Infili la bobina e premi il tasto. Fruscio, poi la voce di Antonio, bassa e affannata: «…Stefano, se mi senti, ho trovato la casa. Quella con le finestre. È la loro, delle sorelle. E il prete… il prete non è quello che sembra. Ho lasciato tutto quello che so alla maestra, a scuola. Vai da lei. Non dire niente a…» Un rumore di passi, e il nastro finisce.");
   }
-  if (o.key==="disco") return say(ITEMS.disco.ascolta());
-  if (o.key==="registratore") return say(has("nastro") ? "Scrivi <em>ascolta nastro</em>." : "Il registratore è vuoto.");
+  if (o.def.ascolta) return say(val(o.def.ascolta));
+  if (o.kind==="npc") return say(cap(o.def.name) + " non sta dicendo niente. Prova a <em>parlarci</em>.");
   say("Non senti niente di particolare.");
 }
 function doLight(words){
   const o = find(words.length?words:["torcia"]);
-  if (!o) return say(words.length && !words.includes("torcia") ? "Qui non c'è niente del genere." : "Non hai niente da accendere.");
+  if (!o) return say(words.length && !words.includes("torcia") ? (notHere(words) ? "Non è una cosa che si accende." : "Qui non c'è niente del genere.") : "Non hai niente da accendere.");
+  if (o.def.accendi) return say(val(o.def.accendi));
   if (o.key!=="torcia") return say("Non è una cosa che si accende.");
   if (F.torciaAccesa) return say("È già accesa.");
   F.torciaAccesa = true; say("Accendi la torcia. Il fascio è giallo e debole, ma è meglio di niente.");
@@ -561,7 +1121,7 @@ function doOff(words){
   const o = find(words.length?words:["torcia"]);
   if (!o || o.key!=="torcia") return say("Non c'è niente da spegnere.");
   if (!F.torciaAccesa) return say("È già spenta.");
-  F.torciaAccesa = false; say("Spegni la torcia. Il buio ti si chiude addosso.");
+  F.torciaAccesa = false; say(here().dark ? "Spegni la torcia. Il buio ti si chiude addosso." : "Spegni la torcia.");
   if (here().dark) describe();
 }
 function doClean(words){
@@ -570,69 +1130,231 @@ function doClean(words){
   if (S.loc!=="impalcatura") return say("Devi salire sull'impalcatura per arrivare all'affresco.");
   if (F.affrescoPulito) return say("L'hai già pulito. Non è il caso di guardarlo ancora.");
   if (!has("borsa")) return say("Ti servono gli attrezzi.");
-  F.affrescoPulito = true; award("affresco",15);
+  F.affrescoPulito = true; award("affresco");
   say("Lavori per un'ora con il bisturi e la spugna imbevuta di solvente. La calce viene via a scaglie. A poco a poco, ai lati del santo, emergono due figure.");
   say(afrescoPulito());
 }
-function doTalk(words){
+function doForce(words){
+  if (!words.length){
+    if (S.loc==="cortile") return say(forzaGrata());
+    if (S.loc==="cappella") return say(forzaLapide());
+    return say("Forzare cosa?");
+  }
   const o = find(words);
-  if (o && o.def.parla) return say(o.def.parla());
-  say("Nessuno ti risponde.");
+  if (!o) return say(notHere(words) ? "Non ti sembra il caso." : "Qui non c'è niente del genere.");
+  if (o.def.forza) return say(val(o.def.forza));
+  if (o.def.container) return say("Non serve forzare: prova ad <em>aprire</em>.");
+  say(o.kind==="npc" || o.def.npcLike ? "Non sei venuto qui per fare violenza." : "Non ti sembra il caso.");
 }
-function doPhone(){
-  if (S.loc!=="locanda") return say("Qui non c'è nessun telefono. L'unico del paese è quello a manovella della locanda, a est della piazza.");
-  if (has("fotografia") && has("disco")){ award("disco",10); return win(); }
-  if (has("fotografia")) return say("Giri la manovella e racconti tutto al maresciallo. «Una fotografia vecchia? Mi serve qualcosa di più, signor restauratore.» Ti manca un'altra prova: la voce del pittore stesso.");
-  if (has("disco")) return say("Giri la manovella e parli del disco. «Un disco graffiato? Senza qualcosa che leghi quella gente a oggi, non posso muovermi.» Ti serve un'altra prova.");
-  return say("Giri la manovella. Dall'altra parte, il maresciallo ascolta e sospira: «Mi porti delle prove, e poi ne parliamo.»");
+
+/* ---------------- dialoghi ---------------- */
+function talkTarget(words){
+  const present = canSee() ? npcsHere() : [];
+  for (const w of words){
+    for (const k of present) if (NPCS[k].words.includes(w)) return { npc:k, rest:words.filter(x => !NPCS[k].words.includes(x)) };
+    if (canSee()) for (const k in (here().scenery||{})){
+      const sc = here().scenery[k];
+      if (sc.parla && sc.words.includes(w) && visibleScenery(sc)) return { scenery:sc, rest:words.filter(x => !sc.words.includes(x)) };
+    }
+  }
+  for (const w of words) for (const k in NPCS) if (NPCS[k].words.includes(w) && !present.includes(k)) return { absent:k };
+  if (present.length === 1) return { npc:present[0], rest:words };
+  if (present.length > 1) return { many:present };
+  if (canSee()) for (const k in (here().scenery||{})){ const sc = here().scenery[k]; if (sc.parla && visibleScenery(sc)) return { scenery:sc, rest:words }; }
+  return {};
 }
+function doTalk(words, withWho){
+  if (withWho && words.length){
+    const w0 = words[0];
+    if (["telefono","cornetta","apparecchio"].includes(w0) && S.loc==="sala") return doPhone();
+    const isTalker = Object.values(NPCS).some(n => n.words.includes(w0)) || Object.values(here().scenery||{}).some(sc => sc.parla && sc.words.includes(w0));
+    if (!isTalker && find([w0])) return say("Parli a quella cosa. Non ti risponde, ovviamente.");
+    if (!isTalker && notHere([w0])) return say("Parli a quella cosa. Non ti risponde, ovviamente.");
+  }
+  const t = talkTarget(words);
+  if (t.absent) return say(cap(NPCS[t.absent].name) + " non è qui.");
+  if (t.many) return say("Con chi vuoi parlare? Qui ci sono " + list(t.many.map(k => NPCS[k].name)) + ".");
+  if (t.scenery) return say(val(t.scenery.parla));
+  if (!t.npc) return say(canSee() ? "Non c'è nessuno con cui parlare." : "Parli nel buio. Nessuno risponde. O almeno, speri.");
+  const n = NPCS[t.npc], topicWords = t.rest.filter(w => w.length > 1);
+  if (!topicWords.length) return say(val(n.parla));
+  for (const tp of n.topics) if (topicWords.some(w => tp.w.some(x => same(x, w)))) return say(val(tp.t));
+  say(val(n.nonSo));
+}
+function doShow(words, mode){
+  const t = talkTarget(words);
+  if (t.absent) return say(cap(NPCS[t.absent].name) + " non è qui.");
+  const targetWords = t.npc ? NPCS[t.npc].words : t.scenery ? t.scenery.words : [];
+  const itemWords = words.filter(w => !targetWords.includes(w));
+  const cands = Object.keys(ITEMS).filter(k => ITEMS[k].words.some(x => itemWords.includes(x)));
+  if (!cands.length) return say(mode==="dai" ? "Cosa vuoi dare?" : "Cosa vuoi mostrare?");
+  const mine = cands.filter(has);
+  if (!mine.length) return say("Non ce l'hai.");
+  if (t.many) return say("A chi? Qui ci sono " + list(t.many.map(k => NPCS[k].name)) + ".");
+  if (t.scenery) return say("La vecchia guarda " + ITEMS[mine[0]].name + ". La bocca si piega in un sorriso.");
+  if (!t.npc) return say("Non c'è nessuno a cui " + (mode==="dai" ? "darlo." : "mostrarlo."));
+  const n = NPCS[t.npc];
+  const handler = k => {
+    let h = mode==="dai" && n.dai ? n.dai[k] : undefined;
+    if (h === "mostra" || (h === undefined && mode==="dai")) h = n.mostra ? n.mostra[k] : undefined;
+    if (h === undefined && mode==="mostra") h = n.mostra ? n.mostra[k] : undefined;
+    return h;
+  };
+  const k = mine.find(x => handler(x) !== undefined) || mine[0], h = handler(k);
+  if (h !== undefined) return say(val(h));
+  say(mode==="dai" ? cap(n.name) + " guarda " + ITEMS[k].name + " e scuote la testa: non lo vuole." : cap(n.name) + " guarda " + ITEMS[k].name + " senza capire cosa vuoi.");
+}
+function doBuy(words){
+  if (S.loc!=="bar") return say("Qui non c'è niente da comprare.");
+  if (!has("portafoglio")) return say("Non hai il portafoglio.");
+  if (!words.length || words.some(w => ITEMS.sigarette.words.includes(w))){
+    if (has("sigarette")) return say("Hai già un pacchetto.");
+    if (F.mattoAmico) return say("Ne hai già comprato uno. Tu non fumi: basta così.");
+    I.sigarette.loc = "inv";
+    return say("Il barista ti passa un pacchetto di Nazionali e conta il resto. «Lei non ha la faccia di uno che fuma», dice. Prendi le sigarette.");
+  }
+  if (words.some(w => ["grappa","grappino"].includes(w))) return say("Il barista ti versa un bicchierino di grappa. Brucia fino allo stomaco. Per un momento il freddo delle valli se ne va.");
+  if (words.some(w => ["vermut","vermouth"].includes(w))) return say("Un vermut, dolce e appiccicoso. Il barista ti guarda bere senza dire niente.");
+  if (words.some(w => ["caffe","orzo"].includes(w))) return say("«Il caffè vero non c'è», dice il barista. Ti serve un caffè d'orzo bollente. Non sa di niente, ma scalda.");
+  if (words.some(w => ["vino","bianco","rosso","bicchiere","bere"].includes(w))) return say("Bevi un bicchiere di bianco al bancone. È aspro e fresco. Il barista ti guarda bere senza dire niente.");
+  say("«Quello non ce l'ho», dice il barista. «Vino, grappa, sigarette.»");
+}
+
+/* ---------------- usa ---------------- */
 function doUse(words){
   const o = find(words);
-  if (!o) return say("Usare cosa?");
-  if (o.key==="piede") return say(forzaGrata());
-  if (o.key==="borsa") return doClean([]);
-  if (o.key==="torcia") return doLight(["torcia"]);
-  if (o.key==="registratore" || o.key==="nastro") return doListen(["nastro"]);
-  if (o.key==="telefono") return doPhone();
-  say("Prova a essere più preciso: per esempio <em>leggi</em>, <em>ascolta</em>, <em>pulisci</em>, <em>forza</em>.");
+  if (!o) return say(words.length ? (notHere(words) ? "Non sai come usarlo." : "Qui non vedo niente del genere.") : "Usare cosa?");
+  const k = o.key;
+  if (k==="piede") return say(S.loc==="cappella" ? forzaLapide() : forzaGrata());
+  if (k==="borsa") return doClean([]);
+  if (k==="torcia") return F.torciaAccesa ? doOff(["torcia"]) : doLight(["torcia"]);
+  if (k==="registratore" || k==="nastro") return doListen(["nastro"]);
+  if (k==="telefono") return doPhone();
+  if (k==="chiavetta") return S.loc==="sagrestia" ? doOpen(["scrittoio"]) : say("Questa chiavetta è da cassetto. Qui non c'è niente che apra.");
+  if (k==="chiave") return S.loc==="cimitero" ? say(apriCancello()) : say("È la chiave della cappella dei Legnani, nel cimitero.");
+  if (k==="sigarette") return npcsHere().includes("matto") ? doShow(["sigarette","nerino"],"dai") : say("Tu non fumi. Ma qualcuno, in paese, le apprezzerebbe.");
+  if (k==="incarico") return npcsHere().includes("segretario") ? doShow(["incarico","segretario"],"mostra") : doRead(["incarico"]);
+  if (k==="busta") return npcsHere().includes("maestra") ? doShow(["busta","maestra"],"mostra") : doRead(["busta"]);
+  if (k==="portafoglio") return S.loc==="bar" ? doBuy([]) : say("Qui non c'è niente da comprare.");
+  if (k==="disco") return doListen(["disco"]);
+  if (o.def.leggi) return doRead(words);
+  say("Prova a essere più preciso: per esempio <em>leggi</em>, <em>apri</em>, <em>mostra X a Y</em>, <em>forza</em>.");
+}
+
+/* ---------------- suggerimenti ---------------- */
+function hint(){
+  if (F.allarme) return say("Suggerimento: non c'è più tempo per cercare altro. Corri al telefono nella sala della locanda, sulla piazza, e chiama i carabinieri. Non entrare in sagrestia né nella camera della vecchia.", "meta");
+  const H = [
+    [() => !S.awarded.busta, "Tra le cose di Antonio, nella tua stanza, c'è una busta con il tuo nome. Leggila."],
+    [() => !S.awarded.nastro, "Antonio ti ha lasciato un nastro. Con il suo registratore puoi ascoltarlo."],
+    [() => !F.quadernoDato, "Antonio ha lasciato qualcosa alla maestra, a scuola, sullo stradone. Lei vuole essere sicura che sei proprio tu: hai qualcosa scritto da Antonio?"],
+    [() => !F.affrescoPulito, "Sei qui per restaurare l'affresco. Sali sull'impalcatura e puliscilo: gli attrezzi sono nella tua borsa."],
+    [() => !F.permesso, "Il municipio ha un archivio. Il segretario vuole un documento con il timbro del Comune: ce l'hai."],
+    [() => !S.awarded.fascicolo, "In archivio c'è il fascicolo dei Legnani. Leggilo."],
+    [() => !has("chiavetta") && !F.scrittoioAperto && !F.parrocoFuori, "Il parroco non lascia mai la sagrestia. Forse, se gli parli dell'affresco ripulito, va a vederlo."],
+    [() => !has("chiavetta") && !F.scrittoioAperto, "Antonio scriveva che la chiave è dove il parroco si inginocchia. Approfitta di quando lui non c'è."],
+    [() => !F.scrittoioAperto, "Con la chiavetta d'ottone puoi aprire lo scrittoio del parroco, ma solo quando lui non c'è."],
+    [() => !has("chiave") && !F.cancelloAperto && I.chiave.loc==="sagrestia", "Nello scrittoio del parroco c'è una chiave di ferro: prendila."],
+    [() => !has("chiave") && !F.cancelloAperto, "Lo scrittoio del parroco va riaperto, quando lui non c'è: dentro c'era una chiave di ferro."],
+    [() => !F.cancelloAperto, "La chiave di ferro apre il cancello della cappella dei Legnani, nel cimitero dietro la chiesa."],
+    [() => !has("torcia"), "Fuori dal paese c'è la nebbia, e nella casa è buio. Prendi la torcia nella tua stanza."],
+    [() => !has("piede"), "Il pescatore ha lasciato un palanchino nella barca sull'argine. Ti servirà più di una volta."],
+    [() => !has("taccuino") && I.taccuino.loc!=="inv", "Nella cappella, la lapide delle sorelle è stata smossa da poco. Con una leva…"],
+    [() => !F.sentiero, "Nel canneto ci si perde. Nerino, sullo stradone, conosce la strada ma vuole da fumare. Oppure guarda bene le canne, con la luce."],
+    [() => !F.grataAperta, "La porta della casa è incatenata, ma la grata della cantina ha i cardini marci."],
+    [() => !has("disco"), "In cantina c'è qualcosa accanto al grammofono."],
+    [() => !has("fotografia"), "La prova più importante è nello studio del pittore, in soffitta. Prima di prenderla, salva la partita: da lì in poi avrai poco tempo."],
+    [() => true, "Hai le prove. Corri al telefono, nella sala della locanda, e chiama i carabinieri. Non entrare dove ti aspettano, e non fidarti di chi porta l'abito."]
+  ];
+  say("Suggerimento: " + H.find(([c]) => c())[1], "meta");
 }
 function help(){
   say("Scrivi comandi brevi in italiano, di solito verbo + oggetto.","meta");
-  say("Movimento: <em>nord sud est ovest su giù</em> (anche n, s, e, o). Azioni: <em>guarda, esamina X, prendi X, lascia X, inventario, leggi X, ascolta X, accendi X, spegni X, apri X, forza X, pulisci X, parla con X, telefona, usa X</em>.","meta");
-  say("Partita: <em>salva, carica, esporta, importa, ricomincia avventura, punti</em> (li trovi anche nel menu ☰ in alto a destra). Con la freccia ↑ ripeti i comandi precedenti.","meta");
+  say("Movimento: <em>nord sud est ovest su giù</em> (anche n, s, e, o), oppure tocca le punte della croce.","meta");
+  say("Azioni: <em>guarda, esamina X, prendi X, lascia X, inventario, apri X, chiudi X, cerca X, leggi X, ascolta X, accendi X, spegni X, forza X, pulisci X, usa X, compra X, telefona</em>.","meta");
+  say("Persone: <em>parla con X</em>, <em>chiedi a X di Y</em>, <em>mostra Y a X</em>, <em>dai Y a X</em>.","meta");
+  say("Partita: <em>suggerimento, salva, carica, esporta, importa, ricomincia avventura, punti</em> (anche dal menu ☰ in alto a destra). Con la freccia ↑ ripeti i comandi precedenti.","meta");
 }
 
-const SAVEKEY = "finestre-che-ridono-save";
-function save(){ try { localStorage.setItem(SAVEKEY, JSON.stringify({F,I,S})); say("Partita salvata in questo browser.","meta"); } catch(e){ say("Non riesco a salvare: il browser blocca la memoria locale.","meta"); } }
+/* ---------------- salvataggi ---------------- */
+const SAVEKEY = "finestre-che-ridono-save-v2";
+function save(){
+  try {
+    const ps = Array.from(logEl.children).slice(-400).map(p => p.outerHTML).join("");
+    localStorage.setItem(SAVEKEY, JSON.stringify({F,I,S,log:ps}));
+    say("Partita salvata in questo browser, insieme al testo letto finora.","meta");
+  } catch(e){ say("Non riesco a salvare: il browser blocca la memoria locale.","meta"); }
+}
 function load(){
   let d=null; try { d = JSON.parse(localStorage.getItem(SAVEKEY)); } catch(e){}
   if (!d) return say("Nessuna partita salvata.","meta");
   if (!adoptState(d)) return say("Il salvataggio è danneggiato o di una versione diversa e non si può caricare.","meta");
-  say("Partita caricata.","meta"); describe();
+  if (typeof d.log === "string" && d.log){ logEl.innerHTML = d.log; say("Partita caricata.","meta"); }
+  else { logEl.innerHTML = ""; say("Partita caricata.","meta"); recap(); }
+  describe();
 }
 function restart(){ logEl.innerHTML=""; newGame(); INTRO.forEach(t=>say(t)); describe(); }
 
-/* Codice: tutto lo stato in pochi bit, scritto in base32 Crockford
-   (niente I, L, O, U: non si confondono scrivendo a mano), più un controllo
-   di 10 bit che scarta i codici scritti male. */
+/* Il codice di esportazione è corto e non contiene il testo:
+   dopo un'importazione il gioco ricostruisce un riassunto della storia. */
+const RECAP = [
+  ["busta",     "Hai letto la lettera di Antonio: non devi fidarti di chi porta l'abito."],
+  ["nastro",    "Sul nastro, Antonio ha trovato la casa delle sorelle e ti manda dalla maestra."],
+  ["quaderno",  "La maestra ti ha dato il quaderno di Antonio: tombe vuote, la chiave nello scrittoio, Nerino che sa del canneto."],
+  ["affresco",  "Hai ripulito l'affresco: ai lati di San Sebastiano ci sono due donne che lo feriscono."],
+  ["permesso",  "Il segretario ti ha aperto l'archivio comunale."],
+  ["fascicolo", "Nel fascicolo Legnani le sorelle non hanno un atto di morte; il podere è oltre l'argine, dopo il canneto."],
+  ["registro",  "Nel registro della parrocchia le sorelle risultano partite, senza sepoltura."],
+  ["matto",     "Hai dato le sigarette a Nerino, che ora ti racconta quello che ha visto."],
+  ["sentiero",  "Conosci il sentiero delle canne spezzate nel canneto."],
+  ["parroco",   "Parlando dell'affresco hai fatto uscire il parroco dalla sagrestia."],
+  ["chiavetta", "Hai trovato la chiavetta sotto il cuscino dell'inginocchiatoio."],
+  ["scrittoio", "Hai aperto lo scrittoio del parroco."],
+  ["biglietto", "Nello scrittoio, un biglietto per il parroco firmato G.: «Sorella mia… come con l'altro»."],
+  ["cancello",  "Hai aperto la cappella dei Legnani."],
+  ["taccuino",  "Dietro la lapide vuota delle sorelle hai trovato il taccuino del pittore."],
+  ["piede",     "Hai il palanchino del pescatore."],
+  ["grata",     "Hai forzato la grata della cantina della casa."],
+  ["disco",     "Hai il disco con la voce del pittore."],
+  ["foto",      "Hai preso la fotografia del pittore con le sorelle: una ha il viso del parroco."]
+];
+function recap(){
+  const done = RECAP.filter(([k]) => S.awarded[k]).map(([,t]) => t);
+  if (!done.length) say("Finora: sei appena arrivato in paese e non hai ancora scoperto niente.","meta");
+  else { say("Finora:","meta"); done.forEach(t => say("· " + t, "meta")); }
+  if (F.allarme){
+    const left = ALARM_LIMIT - (S.moves - S.alarmAt);
+    say("· Nella casa qualcuno si è svegliato. Hai ancora circa " + Math.max(left,0) + " mosse per arrivare al telefono.","meta");
+  }
+  doInv();
+}
+
+/* Codice: lo stato in pochi bit, scritto in base32 Crockford (niente I, L, O, U:
+   non si confondono scrivendo a mano), più un controllo di 10 bit.
+   La posizione di ogni oggetto usa 2 bit (iniziale / con te / sparito / altrove)
+   e 5 bit in più solo se l'oggetto è stato lasciato in un'altra stanza. */
 const B32 = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 const bitsFor = n => Math.max(1, Math.ceil(Math.log2(n)));
 const toBits = (n, len) => { const a=[]; for (let i=len-1;i>=0;i--) a.push((n>>i)&1); return a; };
-const fromBits = (a, p, len) => { let n=0; for (let i=0;i<len;i++) n=n*2+a[p+i]; return n; };
+const fromBits = (a, p, len) => { let n=0; for (let i=0;i<len;i++) n=n*2+(a[p+i]||0); return n; };
 function check10(s){ let h=2166136261; for (let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return (h>>>0) & 1023; }
-function layout(){
-  const rooms=Object.keys(ROOMS), items=Object.keys(ITEMS), awards=Object.keys(SAVE_SPEC.awards);
-  const rb=bitsFor(rooms.length), lb=bitsFor(rooms.length+2);
-  return { rooms, items, awards, rb, lb, data: SAVE_SPEC.flags.length + awards.length + rb + items.length*lb + 12 + 1 };
-}
+function layout(){ const rooms=Object.keys(ROOMS); return { rooms, items:Object.keys(ITEMS), awards:Object.keys(SAVE_SPEC.awards), rb:bitsFor(rooms.length) }; }
 function exportCode(){
   const L = layout();
   let b = [];
   SAVE_SPEC.flags.forEach(k => b.push(F[k]?1:0));
   L.awards.forEach(k => b.push(S.awarded[k]?1:0));
   b = b.concat(toBits(L.rooms.indexOf(S.loc), L.rb));
-  L.items.forEach(k => { const l=I[k].loc; b = b.concat(toBits(l===null?0 : l==="inv"?1 : 2+L.rooms.indexOf(l), L.lb)); });
-  b = b.concat(toBits(Math.min(S.moves,4095), 12)); b.push(S.over?1:0);
+  L.items.forEach(k => {
+    const l = I[k].loc;
+    if (l === ITEMS[k].loc) b = b.concat([0,0]);
+    else if (l === "inv") b = b.concat([0,1]);
+    else if (l === null) b = b.concat([1,0]);
+    else b = b.concat([1,1], toBits(L.rooms.indexOf(l), L.rb));
+  });
+  b = b.concat(toBits(Math.min(S.moves,1023), 10)); b.push(S.over?1:0);
+  b = b.concat(toBits(F.allarme ? Math.min(S.moves - S.alarmAt, 31) : 0, 5));
+  b = b.concat(toBits(F.parrocoFuori ? Math.max(0, Math.min(S.parrocoBack - S.moves, 15)) : 0, 4));
   b = b.concat(toBits(check10(GAME_ID + b.join("")), 10));
   while (b.length % 5) b.push(0);
   let s=""; for (let i=0;i<b.length;i+=5) s += B32[fromBits(b,i,5)];
@@ -644,23 +1366,55 @@ function importCode(raw){
   if (s.slice(0,3) !== GAME_ID.slice(0,3)) return "Questo codice non è di questa avventura.";
   if (s.slice(0,4) !== GAME_ID) return "Questo codice è di una versione diversa dell'avventura.";
   s = s.slice(4).replace(/O/g,"0").replace(/[IL]/g,"1");
-  const L = layout(), total = L.data + 10;
-  if (s.length !== Math.ceil(total/5)) return "Il codice è incompleto o ha caratteri in più.";
   let b=[];
   for (const c of s){ const v=B32.indexOf(c); if (v<0) return "Il codice contiene caratteri non validi."; b=b.concat(toBits(v,5)); }
-  if (fromBits(b, L.data, 10) !== check10(GAME_ID + b.slice(0,L.data).join(""))) return "Il codice non torna: controlla di averlo scritto bene.";
-  let p=0; const nF={}, nA={};
-  SAVE_SPEC.flags.forEach(k => nF[k] = !!b[p++]);
-  L.awards.forEach(k => { if (b[p++]) nA[k]=true; });
-  const ri = fromBits(b,p,L.rb); p+=L.rb; if (ri >= L.rooms.length) return "Il codice non è valido.";
-  const nI={};
-  for (const k of L.items){ const v=fromBits(b,p,L.lb); p+=L.lb; if (v >= L.rooms.length+2) return "Il codice non è valido."; nI[k] = { loc: v===0?null : v===1?"inv" : L.rooms[v-2] }; }
-  const moves = fromBits(b,p,12); p+=12; const over = !!b[p++];
-  F=nF; I=nI;
-  S={ loc:L.rooms[ri], moves, over, awarded:nA, score: Object.keys(nA).reduce((t,k)=>t+SAVE_SPEC.awards[k],0) };
+  const L = layout(); let p=0;
+  const need = n => { if (p + n > b.length) throw 0; const v = fromBits(b,p,n); p += n; return v; };
+  let nF={}, nA={}, ri, nI={}, moves, over, alarmEl, parRem;
+  try {
+    SAVE_SPEC.flags.forEach(k => nF[k] = !!need(1));
+    L.awards.forEach(k => { if (need(1)) nA[k]=true; });
+    ri = need(L.rb); if (ri >= L.rooms.length) return "Il codice non è valido.";
+    for (const k of L.items){
+      const t = need(2);
+      if (t===0) nI[k] = { loc: ITEMS[k].loc };
+      else if (t===1) nI[k] = { loc:"inv" };
+      else if (t===2) nI[k] = { loc:null };
+      else { const r = need(L.rb); if (r >= L.rooms.length) return "Il codice non è valido."; nI[k] = { loc:L.rooms[r] }; }
+    }
+    moves = need(10); over = !!need(1); alarmEl = need(5); parRem = need(4);
+    const chk = need(10);
+    if (b.length - p >= 5 || b.slice(p).some(x => x)) return "Il codice è incompleto o ha caratteri in più.";
+    if (chk !== check10(GAME_ID + b.slice(0, p-10).join(""))) return "Il codice non torna: controlla di averlo scritto bene.";
+  } catch(e){ return "Il codice è incompleto o ha caratteri in più."; }
+  F=nF; I=nI; OPEN={};
+  S={ loc:L.rooms[ri], moves, over, awarded:nA, alarmAt: moves - alarmEl, parrocoBack: moves + parRem,
+      score: Object.keys(nA).reduce((t,k)=>t+SAVE_SPEC.awards[k],0) };
   return null;
 }
 
+/* ---------------- tempo che passa ---------------- */
+function tick(){
+  if (S.over) return;
+  if (F.parrocoFuori && S.moves >= S.parrocoBack){
+    F.parrocoFuori = false;
+    if (S.loc==="sagrestia"){
+      F.scrittoioAperto = false; if (I.chiave.loc==="sagrestia") I.chiave.loc = null;
+      F.armadioAperto = false;
+      S.loc = "chiesa";
+      say("La porticina si apre: il parroco è tornato. Ti trova in mezzo alla sagrestia e il sorriso gli si gela sulla faccia. «Non ha un affresco da finire, figliolo?» Ti accompagna fuori, gentile e fermissimo, e richiude tutto quello che hai aperto. Sei di nuovo in chiesa.","bad");
+    } else if (S.loc==="chiesa") say("Il parroco si riscuote, ti lancia un'occhiata e rientra in sagrestia a passi piccoli.","amb");
+  }
+  if (F.allarme){
+    const left = ALARM_LIMIT - (S.moves - S.alarmAt);
+    if (left <= 0) return die("Senti i passi solo all'ultimo: piccoli, leggeri, vicinissimi. Una mano minuta ti si posa sulla spalla, quasi una carezza. «L'abbiamo aspettata tanto», dice una voce dolce, troppo dolce. Non fai in tempo a voltarti.");
+    if (left === 20) say("Da qualche parte, dietro di te, una porta sbatte. Qualcuno ti sta cercando.","amb");
+    if (left === 10) say("Senti dei passi piccoli, lontani, che vanno nella tua stessa direzione. Fai presto.","amb");
+    if (left === 5) say("I passi sono vicini. Molto vicini. Il telefono, subito.","bad");
+  }
+}
+
+/* ---------------- parser ---------------- */
 function parse(raw){
   if (raw.trim() === "?") return help();
   const t = normalize(raw);
@@ -678,61 +1432,96 @@ function parse(raw){
     if (parts.length<2) return openImport();
     const err = importCode(parts.slice(1).join(""));
     if (err) return say(err,"meta");
-    logEl.innerHTML=""; say("Partita importata dal codice.","meta"); return describe();
+    logEl.innerHTML=""; say("Partita importata dal codice.","meta"); recap(); return describe();
   }
   if (S.over) return say("La partita è finita. Scrivi <em>ricomincia avventura</em> o <em>carica</em>.","meta");
-  const free = ["aiuto","help","punti","salva","inventario","i","inv"].includes(v);
+  const free = ["aiuto","help","punti","punteggio","salva","inventario","i","inv","suggerimento","indizio","suggerisci"].includes(v);
   if (!free) S.moves++;
   dispatch(v, rest, parts);
-  if (!free && !S.over && SPOOKY.includes(S.loc) && S.moves % 5 === 0)
-    say(AMBIENT[(S.moves/5) % AMBIENT.length], "amb");
+  if (!free) tick();
+  if (!free && !S.over && SPOOKY.includes(S.loc) && S.moves % 6 === 0 && !F.allarme)
+    say(AMBIENT[(S.moves/6) % AMBIENT.length], "amb");
 }
 function dispatch(v, rest, parts){
   if (DIR[v]) return go(DIR[v]);
   if (["vai","va","andare","cammina","corri","entra","esci","fuggi","scappa","torna"].includes(v)){
     const d = rest.map(w=>DIR[w]).find(Boolean);
     if (d) return go(d);
-    if (v==="entra" && S.loc==="cortile") return go("giu");
-    if (v==="entra" && S.loc==="piazza") return go("n");
-    const ex = realExits(here());
+    const r = here(), named = rest.find(w => realExits(r).some(x => normalize(val((r.ways||{})[x])||"").split(/\s+/).includes(w) || r.exits[x]===w));
+    if (named){ const x = realExits(r).find(x => normalize(val((r.ways||{})[x])||"").split(/\s+/).includes(named) || r.exits[x]===named); return go(x); }
+    const ex = realExits(r);
     if (ex.length === 1) return go(ex[0]);
     return say("In che direzione? Le uscite sono: " + ex.map(d => DIRNAME[d]).join(", ") + ".");
   }
   switch (v){
-    case "guarda": case "l": case "osserva": return rest.length ? doExamine(rest) : describe();
-    case "esamina": case "x": case "ispeziona": case "controlla": case "cerca": case "sfoglia": return doExamine(rest);
-    case "prendi": case "raccogli": case "piglia": case "afferra": return doTake(rest);
-    case "lascia": case "posa": case "butta": case "molla": return doDrop(rest);
+    case "guarda": case "l": case "osserva": case "descrivi": return rest.length ? doExamine(rest) : describe();
+    case "esamina": case "x": case "ispeziona": case "controlla": case "studia": return doExamine(rest);
+    case "cerca": case "fruga": case "rovista": case "solleva": case "sposta": case "perquisisci": return doSearch(rest);
+    case "prendi": case "raccogli": case "piglia": case "afferra": case "ruba": return doTake(rest);
+    case "lascia": case "posa": case "butta": case "molla": case "getta": return doDrop(rest);
     case "inventario": case "i": case "inv": return doInv();
-    case "apri": return doOpen(rest);
-    case "forza": case "scardina": case "solleva": case "rompi": case "spacca":
-      return rest.some(w=>["grata","inferriata","cantina"].includes(w)) || (!rest.length && S.loc==="cortile") ? say(forzaGrata()) : say("Non ti sembra il caso.");
-    case "leggi": return doRead(rest);
+    case "apri": case "sblocca": return doOpen(rest);
+    case "chiudi": return doClose(rest);
+    case "forza": case "scardina": case "rompi": case "spacca": return doForce(rest);
+    case "fai": return rest[0]==="vedere" ? doShow(rest.slice(1), "mostra") : rest[0]==="leva" ? doForce(rest.slice(1)) : say("Fare cosa? Prova con un verbo più preciso.");
+    case "leggi": case "sfoglia": return doRead(rest);
     case "ascolta": case "senti": return doListen(rest);
     case "accendi": return doLight(rest);
     case "spegni": return doOff(rest);
     case "pulisci": case "restaura": case "gratta": case "lava": return doClean(rest);
-    case "parla": case "chiedi": case "interroga": return doTalk(rest);
+    case "parla": case "saluta": case "racconta": return doTalk(rest, ["con","a","al","alla","allo","all"].includes(parts[1]));
+    case "chiedi": case "domanda": case "interroga": case "di": case "dici": return doTalk(rest);
+    case "mostra": return doShow(rest, "mostra");
+    case "dai": case "offri": case "regala": case "consegna": return doShow(rest, "dai");
+    case "compra": case "acquista": case "ordina": return doBuy(rest);
+    case "bevi": return S.loc==="bar" ? doBuy(["vino"]) : say("Meglio di no. In questo paese non berresti niente che non hai visto versare.");
+    case "mangia": return say(S.loc==="capanno" ? "Il pescatore ti guarda storto. «Quelle sono la mia cena.»" : "Non hai fame. Hai solo un nodo allo stomaco.");
+    case "fuma": return say(has("sigarette") ? "Tu non fumi. Ma qualcuno, in paese, le apprezzerebbe." : "Non fumi, e non hai sigarette.");
     case "telefona": case "chiama": return doPhone();
-    case "usa": case "adopera": return doUse(rest);
-    case "nuota": return S.loc==="argine" ? die("Scendi nel canale. L'acqua è fredda e il fondo non c'è. Qualcosa, tra le alghe, ti prende per una caviglia.") : say("Qui non c'è dove nuotare.");
+    case "usa": case "adopera": case "utilizza": return doUse(rest);
+    case "nuota": case "tuffati":
+      if (S.loc==="argine" || S.loc==="canneto") return die("Scendi nel canale. L'acqua è fredda e il fondo non c'è. Qualcosa, tra le alghe, ti prende per una caviglia.");
+      if (v==="tuffati" && S.loc==="impalcatura") return die(MORTE_IMPALCATURA);
+      return say("Qui non c'è dove nuotare.");
     case "scavalca": case "supera":
       if (S.loc==="impalcatura") return die(MORTE_IMPALCATURA);
       return say("Qui non c'è niente da scavalcare.");
-    case "salta": case "buttati": case "lanciati": case "tuffati":
+    case "salta": case "buttati": case "lanciati":
       if (S.loc==="impalcatura") return die(MORTE_IMPALCATURA);
-      if (v==="tuffati" && S.loc==="argine") return die("Scendi nel canale. L'acqua è fredda e il fondo non c'è. Qualcosa, tra le alghe, ti prende per una caviglia.");
       return say("Saltelli sul posto per scrollarti di dosso l'umidità. Non serve a molto.");
     case "prega": return say(S.loc==="chiesa" ? "Ti inginocchi in un banco. Dall'alto, il santo ti guarda. Ti sembra che anche lui sorrida." : "Mormori una preghiera che non dicevi da bambino.");
-    case "dormi": return say(S.loc==="locanda" ? "Chiudi gli occhi. Sogni bocche dipinte che si aprono e si chiudono. Ti svegli sudato: meglio restare sveglio." : "Non è il posto per dormire.");
-    case "aspetta": case "z": return say("Il tempo passa. La nebbia no.");
-    case "punti": return say(`Hai ${S.score} punti su 100, in ${S.moves} mosse.`,"meta");
+    case "dormi": case "riposa": return say(S.loc==="stanza" ? "Chiudi gli occhi. Sogni bocche dipinte che si aprono e si chiudono. Ti svegli sudato: meglio restare sveglio." : "Non è il posto per dormire.");
+    case "aspetta": case "z": case "attendi": return say(["argine","canneto","cortile","stradone"].includes(S.loc) ? "Il tempo passa. La nebbia no." : "Aspetti. Il tempo passa, lento.");
+    case "bussa": return say(S.loc==="cortile" ? "Bussi alla porta incatenata. Dentro, qualcosa smette di muoversi. Nessuno apre." : "Bussi. Nessuno risponde.");
+    case "grida": case "urla": return say(F.allarme ? "Gridi. Ti risponde solo l'eco. E una risata, lontana." : "Gridi. Un cane abbaia, lontano. Nessuno viene.");
+    case "colpisci": case "picchia": case "attacca": case "uccidi": return say("Non sei venuto qui per fare violenza. E non sei sicuro di chi vincerebbe.");
+    case "spingi": case "tira": return rest.length ? doOpen(rest) : say(v==="spingi" ? "Spingere cosa?" : "Tirare cosa?");
+    case "tocca": case "accarezza": {
+      if (!rest.length) return say("Toccare cosa?");
+      const o = find(rest);
+      if (!o) return say(notHere(rest) ? "Lo sfiori con le dita. Niente di strano." : "Qui non vedo niente del genere.");
+      if (o.kind==="npc" || o.def.npcLike) return say("Non ti sembra il caso.");
+      if (["camino","stufetta","stufa","tazze"].includes(o.key) && ["cucina","capanno","scuola"].includes(S.loc)) return say("È caldo. Qualcuno è passato di qui da poco.");
+      return say("Lo sfiori con le dita. Niente di strano.");
+    }
+    case "annusa": case "odora": {
+      const SMELL = { chiesa:"Odore di cera e di umidità.", sagrestia:"Odore di cera, di incenso vecchio e di naftalina.", bar:"Odore di vino, di fumo e di segatura.", sala:"Odore di vino e di cenere fredda.",
+        capanno:"Odore di fumo e di anguilla fritta.", cantina:"Odore di terra bagnata e di qualcosa di dolciastro.", camera:"Un odore pesante di canfora.", cucina:"Odore di brace e di caffè d'orzo.",
+        cappella:"Odore di marmo freddo e di fiori marci.", fienile:"Odore di fieno marcio.", scuola:"Odore di gesso e di inchiostro.", archivio:"Odore di carta vecchia e di polvere." };
+      return say(SMELL[S.loc] || "Odore di umidità e di acqua ferma.");
+    }
+    case "siedi": case "siediti": return say("Ti siedi un momento. Il silenzio ti si posa addosso. Ti rialzi.");
+    case "sveglia": return say(S.loc==="camera" ? "Scuoti piano la vecchia. Non reagisce. Ma quando ritrai la mano, ti accorgi che ti sta guardando." : "Non c'è nessuno da svegliare.");
+    case "punti": case "punteggio": return say(`Hai ${S.score} punti su 100, in ${S.moves} mosse.`,"meta");
     case "aiuto": case "help": return help();
+    case "suggerimento": case "indizio": case "suggerisci": return hint();
     case "salva": return save();
     case "ridi": return say("Provi a ridere. Ti esce un suono che non riconosci. Da qualche parte, qualcuno ride insieme a te.");
+    case "piangi": return say("Pensi ad Antonio. Ti asciughi gli occhi con la manica. Non è il momento.");
+    case "ciao": case "buongiorno": case "salve": return doTalk(rest);
   }
   if (mentionsKnown(parts)) return say("Non so come farlo. Prova con un altro verbo, oppure scrivi <em>aiuto</em>.");
-  say("Non capisco. Scrivi <em>aiuto</em> per l'elenco dei comandi.");
+  say("Non capisco. Scrivi <em>aiuto</em> per l'elenco dei comandi, o <em>suggerimento</em> se sei bloccato.");
 }
 
 /* ---------- interfaccia ---------- */
@@ -866,7 +1655,8 @@ function frame(now){
   arms.filter(a => a.tip.depth >= 0 || a.d==="su").forEach(drawArm);
   drawFigure(c, O.x, O.y, (narrow?1.15:1.45)*O.k);
   arms.filter(a => a.tip.depth < 0 && a.d!=="su").forEach(drawArm);
-  // etichette accanto alle punte
+  // etichette accanto alle punte, poi separate se si sovrappongono
+  const boxes = [];
   for (const a of arms){
     const el = labelEls[a.d]; if (!a.open || el.hidden) continue;
     const sz = labelSize[a.d] || { w:0, h:0 }, w = sz.w, h = sz.h;
@@ -875,9 +1665,29 @@ function frame(now){
     let x = a.tip.x + ux*gap, y = a.tip.y + uy*gap;
     x -= ux > 0.35 ? 0 : ux < -0.35 ? w : w/2;
     y -= uy > 0.3 ? 0 : uy < -0.3 ? h : h/2;
-    x = Math.max(4, Math.min(cW - w - 4, x)); y = Math.max(4, Math.min(cH - h - 4, y));
-    el.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`;
+    boxes.push({ el, x, y, w, h, cy: a.tip.y });
   }
+  const clampB = q => { q.x = Math.max(4, Math.min(cW - q.w - 4, q.x)); q.y = Math.max(4, Math.min(cH - q.h - 4, q.y)); };
+  boxes.forEach(clampB);
+  for (let it = 0; it < 12; it++){
+    let moved = false;
+    for (let i = 0; i < boxes.length; i++) for (let j = i+1; j < boxes.length; j++){
+      const A = boxes[i], B = boxes[j];
+      const ox = Math.min(A.x+A.w, B.x+B.w) - Math.max(A.x, B.x), oy = Math.min(A.y+A.h, B.y+B.h) - Math.max(A.y, B.y);
+      if (ox > 0 && oy > 0){
+        if (ox < oy){
+          const push = ox/2 + 3, left = A.x <= B.x ? A : B, right = left === A ? B : A;
+          left.x -= push; right.x += push;
+        } else {
+          const push = oy/2 + 3, up = A.cy <= B.cy ? A : B, down = up === A ? B : A;
+          up.y -= push; down.y += push;
+        }
+        clampB(A); clampB(B); moved = true;
+      }
+    }
+    if (!moved) break;
+  }
+  for (const q of boxes) q.el.style.transform = `translate(${q.x.toFixed(1)}px,${q.y.toFixed(1)}px)`;
 }
 CP.addEventListener("pointerdown", e => {
   if (e.target.closest(".cl")) return;
@@ -956,7 +1766,7 @@ document.getElementById("ex-copy").addEventListener("click", e => {
 function doImport(){
   const err = importCode(imCode.value);
   if (err){ imErr.textContent = err; return; }
-  closeOv(); logEl.innerHTML=""; say("Partita importata dal codice.","meta"); describe(); updateStatus(); scr.scrollTop=scr.scrollHeight;
+  closeOv(); logEl.innerHTML=""; say("Partita importata dal codice.","meta"); recap(); describe(); updateStatus(); scr.scrollTop=scr.scrollHeight;
 }
 document.getElementById("im-go").addEventListener("click", doImport);
 imCode.addEventListener("keydown", e => { if (e.key==="Enter"){ e.preventDefault(); doImport(); } });
@@ -969,7 +1779,7 @@ document.addEventListener("keydown", e => {
   if (menu.open){ menu.open=false; menu.querySelector("summary").focus(); }
 });
 function start(data){
-  if (data && adoptState(data)){ logEl.innerHTML = typeof data.log === "string" ? data.log : ""; if (!logEl.innerHTML) describe(); }
+  if (data && adoptState(data)){ OPEN = (data.open && typeof data.open === "object") ? data.open : {}; logEl.innerHTML = typeof data.log === "string" ? data.log : ""; if (!logEl.innerHTML) describe(); }
   else {
     newGame();
     let h=""; try { h = decodeURIComponent((location.hash||"").slice(1)); } catch(e){}
@@ -977,7 +1787,7 @@ function start(data){
     const err = looksLikeCode ? importCode(h) : null;
     if (looksLikeCode){ try { history.replaceState(null,"",location.pathname+location.search); } catch(e){} }
     if (looksLikeCode && !err){
-      say("Partita ripresa dal codice nel link.","meta"); describe();
+      say("Partita ripresa dal codice nel link.","meta"); recap(); describe();
     } else {
       INTRO.forEach(t=>say(t)); describe(); say("Scrivi <em>aiuto</em> se è la tua prima avventura testuale.","meta");
       if (looksLikeCode) say("Il codice nel link non è stato caricato: " + err.charAt(0).toLowerCase() + err.slice(1), "meta");
@@ -985,7 +1795,7 @@ function start(data){
   }
   updateStatus(); scr.scrollTop = scr.scrollHeight;
 }
-window.claude?.hot?.snapshot?.(() => ({F,I,S,log:logEl.innerHTML}));
+window.claude?.hot?.snapshot?.(() => ({F,I,S,open:OPEN,log:logEl.innerHTML}));
 window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
 </script>
 </body>
